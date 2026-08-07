@@ -1,7 +1,19 @@
 using HappyGemini;
+using HappyGemini.Server;
+using JoyfulReaperLib.TcpServer;
 
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddHostedService<Worker>();
+
+// Windows Service Support
+builder.Services.AddWindowsService(options =>
+{
+    options.ServiceName = "Happy Gemini Service";
+});
+
+builder.Services.Configure<GeminiServerOptions>(builder.Configuration.GetSection("Gemini"));
+builder.Services.AddSingleton<GeminiCertificateProvider>();
+
+builder.Services.AddTcpServer<GeminiConnectionHandler, GeminiServerOptions>();
 
 var host = builder.Build();
 host.Run();
