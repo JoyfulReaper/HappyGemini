@@ -20,4 +20,25 @@
 		</None>
 	</ItemGroup>
 
+
+	<Target Name="StageTestPlugin"
+			AfterTargets="Build"
+			Condition="'$(Configuration)' == 'Debug'">
+
+		<PropertyGroup>
+			<PluginStageDirectory>$(MSBuildProjectDirectory)\..\HappyGemini\bin\$(Configuration)\$(TargetFramework)\plugins\HappyGemini.TestPlugin</PluginStageDirectory>
+		</PropertyGroup>
+
+		<ItemGroup>
+			<PluginOutputFiles Include="$(TargetDir)*" />
+		</ItemGroup>
+
+		<MakeDir Directories="$(PluginStageDirectory)" />
+
+		<Copy SourceFiles="@(PluginOutputFiles)"
+			  DestinationFolder="$(PluginStageDirectory)"
+			  SkipUnchangedFiles="true" />
+
+	</Target>
+
 </Project>
