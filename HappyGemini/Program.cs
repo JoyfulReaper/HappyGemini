@@ -1,5 +1,6 @@
 using HappyGemini;
 using HappyGemini.Pages;
+using HappyGemini.Plugins;
 using HappyGemini.Server;
 using JoyfulReaperLib.TcpServer;
 
@@ -42,6 +43,8 @@ builder.Services.AddSingleton<GeminiCertificateProvider>();
 builder.Services.AddScoped<GeminiPageResolver>();
 
 builder.Services.AddGeminiPagesFromAssemblyContaining<HomePage>();
+
+builder.Services.AddGeminiPlugins(builder.Configuration);
 
 builder.Services.AddHostedService<GeminiPageStartupValidator>();
 
