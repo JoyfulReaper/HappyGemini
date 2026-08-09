@@ -20,6 +20,8 @@ builder.Services.AddScoped<GeminiPageResolver>();
 
 builder.Services.AddGeminiPagesFromAssemblyContaining<HomePage>();
 
+builder.Services.AddHostedService<GeminiPageStartupValidator>();
+
 builder.Services.AddTcpServer<
     GeminiConnectionHandler,
     GeminiServerOptions>();
