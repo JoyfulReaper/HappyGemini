@@ -4,7 +4,6 @@ using Microsoft.Extensions.Options;
 using System.Net;
 using System.Net.Security;
 using System.Security.Authentication;
-using System.Text;
 
 namespace HappyGemini.Server;
 
@@ -13,9 +12,6 @@ public sealed class GeminiConnectionHandler(
     IOptions<GeminiServerOptions> options,
     ILogger<GeminiConnectionHandler> logger) : ITcpConnectionHandler
 {
-    private static readonly UTF8Encoding Utf8 =
-        new(encoderShouldEmitUTF8Identifier: false);
-
     private readonly GeminiServerOptions _options = options.Value;
 
     public async ValueTask HandleAsync(
@@ -59,6 +55,9 @@ public sealed class GeminiConnectionHandler(
             requestTimeout.CancelAfter(
                 _options.RequestTimeout);
 
+            GeminiResponseWriter response =
+                new(sslStream);
+
             GeminiRequest? request =
                 await GeminiRequestReader.ReadAsync(
                     sslStream,
@@ -66,9 +65,9 @@ public sealed class GeminiConnectionHandler(
 
             if (request is null)
             {
-                await WriteAsync(
-                    sslStream,
-                    "59 Bad request\r\n",
+                await response.WriteHeaderAsync(
+                    GeminiStatusCode.BadRequest,
+                    "Bad request",
                     requestTimeout.Token);
 
                 await sslStream.ShutdownAsync();
@@ -89,15 +88,13 @@ public sealed class GeminiConnectionHandler(
                 request.Url,
                 context.RemoteEndPoint);
 
-            await WriteAsync(
-                sslStream,
-                """
-                20 text/gemini; charset=utf-8
-                # HappyGemini
+            await response.WriteHeaderAsync(
+                GeminiStatusCode.Success,
+                "text/gemini; charset=utf-8",
+                requestTimeout.Token);
 
-                It lives.
-
-                """.ReplaceLineEndings("\r\n"),
+            await response.WriteTextAsync(
+                "# HappyGemini\r\n\r\nIt lives.\r\n",
                 requestTimeout.Token);
 
             await sslStream.ShutdownAsync();
@@ -123,17 +120,5 @@ public sealed class GeminiConnectionHandler(
                 "Gemini connection from {Remote} ended unexpectedly.",
                 context.RemoteEndPoint);
         }
-    }
-
-    private static ValueTask WriteAsync(
-        Stream stream,
-        string value,
-        CancellationToken cancellationToken)
-    {
-        byte[] bytes = Utf8.GetBytes(value);
-
-        return stream.WriteAsync(
-            bytes,
-            cancellationToken);
     }
 }
