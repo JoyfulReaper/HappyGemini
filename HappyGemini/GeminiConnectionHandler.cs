@@ -1,8 +1,10 @@
 ﻿using System.Net;
+using System.Diagnostics;
 using System.Net.Security;
 using System.Security.Authentication;
 using HappyGemini.Extensibility;
 using HappyGemini.Pages;
+using HappyGemini.Telemetry;
 using JoyfulReaperLib.TcpServer;
 using Microsoft.Extensions.Options;
 
@@ -15,6 +17,7 @@ public sealed class GeminiConnectionHandler(
     GeminiContentStore contentStore,
     GeminiHostValidator hostValidator,
     GeminiVirtualHostResolver virtualHostResolver,
+    TelemetryService telemetryService,
     ILogger<GeminiConnectionHandler> logger
 ) : ITcpConnectionHandler
 {
@@ -25,7 +28,60 @@ public sealed class GeminiConnectionHandler(
         CancellationToken cancellationToken
     )
     {
+        GeminiSessionResult? result = await ProcessAsync(context, cancellationToken);
+
+        if (result is null)
+        {
+            return;
+        }
+
+        long connectionId = context.ConnectionId;
+
+        context.RegisterAfterClose(afterCloseToken =>
+            telemetryService.PublishPageServedTelemetryAsync(
+                connectionId,
+                result,
+                afterCloseToken
+            )
+        );
+    }
+
+    private async Task<GeminiSessionResult?> ProcessAsync(
+        TcpConnectionContext context,
+        CancellationToken cancellationToken
+    )
+    {
         await using var sslStream = new SslStream(context.Stream, leaveInnerStreamOpen: true);
+
+        GeminiRequest? request = null;
+        GeminiResponseWriter? response = null;
+        Stopwatch? stopwatch = null;
+        DateTimeOffset occurredAt = default;
+        string? correlationId = null;
+        bool responseCompleted = false;
+
+        GeminiSessionResult? CreateResult()
+        {
+            if (
+                request is null
+                || response is null
+                || stopwatch is null
+                || correlationId is null
+            )
+            {
+                return null;
+            }
+
+            return GeminiSessionResult.Create(
+                request,
+                response,
+                context.RemoteEndPoint,
+                stopwatch.ElapsedMilliseconds,
+                responseCompleted,
+                occurredAt,
+                correlationId
+            );
+        }
 
         try
         {
@@ -47,15 +103,19 @@ public sealed class GeminiConnectionHandler(
                 handshakeTimeout.Token
             );
 
+            occurredAt = DateTimeOffset.UtcNow;
+            correlationId = Guid.NewGuid().ToString("N");
+            stopwatch = Stopwatch.StartNew();
+
             using var requestTimeout = CancellationTokenSource.CreateLinkedTokenSource(
                 cancellationToken
             );
 
             requestTimeout.CancelAfter(_options.RequestTimeout);
 
-            GeminiResponseWriter response = new(sslStream);
+            response = new GeminiResponseWriter(sslStream);
 
-            GeminiRequest? request = await GeminiRequestReader.ReadAsync(
+            request = await GeminiRequestReader.ReadAsync(
                 sslStream,
                 requestTimeout.Token
             );
@@ -69,7 +129,7 @@ public sealed class GeminiConnectionHandler(
                 );
 
                 await sslStream.ShutdownAsync();
-                return;
+                return null;
             }
 
             request = request with
@@ -96,7 +156,8 @@ public sealed class GeminiConnectionHandler(
                 );
 
                 await sslStream.ShutdownAsync();
-                return;
+                responseCompleted = true;
+                return CreateResult();
             }
 
             if (!hostValidator.MatchesServerName(request.Url, sslStream.TargetHostName))
@@ -114,7 +175,8 @@ public sealed class GeminiConnectionHandler(
                 );
 
                 await sslStream.ShutdownAsync();
-                return;
+                responseCompleted = true;
+                return CreateResult();
             }
 
             if (!hostValidator.TargetsServerPort(request.Url, _options.Port))
@@ -126,7 +188,8 @@ public sealed class GeminiConnectionHandler(
                 );
 
                 await sslStream.ShutdownAsync();
-                return;
+                responseCompleted = true;
+                return CreateResult();
             }
 
             IGeminiPage? page = pageResolver.Resolve(virtualHost, request.Url.AbsolutePath);
@@ -145,9 +208,10 @@ public sealed class GeminiConnectionHandler(
                 if (shouldShutdownGracefully)
                 {
                     await sslStream.ShutdownAsync();
+                    responseCompleted = true;
                 }
 
-                return;
+                return CreateResult();
             }
 
             if (
@@ -178,7 +242,8 @@ public sealed class GeminiConnectionHandler(
                     );
 
                     await sslStream.ShutdownAsync();
-                    return;
+                    responseCompleted = true;
+                    return CreateResult();
                 }
                 catch (Exception exception)
                     when (exception is UnauthorizedAccessException or IOException)
@@ -198,7 +263,8 @@ public sealed class GeminiConnectionHandler(
                     );
 
                     await sslStream.ShutdownAsync();
-                    return;
+                    responseCompleted = true;
+                    return CreateResult();
                 }
 
                 await using (fileStream)
@@ -215,7 +281,8 @@ public sealed class GeminiConnectionHandler(
                 }
 
                 await sslStream.ShutdownAsync();
-                return;
+                responseCompleted = true;
+                return CreateResult();
             }
 
             await response.WriteHeaderAsync(
@@ -225,6 +292,8 @@ public sealed class GeminiConnectionHandler(
             );
 
             await sslStream.ShutdownAsync();
+            responseCompleted = true;
+            return CreateResult();
         }
         catch (AuthenticationException exception)
         {
@@ -242,6 +311,12 @@ public sealed class GeminiConnectionHandler(
                 context.RemoteEndPoint
             );
         }
+        finally
+        {
+            stopwatch?.Stop();
+        }
+
+        return CreateResult();
     }
 
     internal static async Task<bool> ExecutePageAsync(

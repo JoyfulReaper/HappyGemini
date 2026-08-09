@@ -13,10 +13,26 @@ public sealed class GeminiResponseWriterTests
         GeminiResponseWriter writer = new(stream);
 
         Assert.False(writer.HasStarted);
+        Assert.Null(writer.StatusCode);
 
         await writer.WriteHeaderAsync(GeminiStatusCode.Success, "text/plain");
 
         Assert.True(writer.HasStarted);
+        Assert.Equal(GeminiStatusCode.Success, writer.StatusCode);
+    }
+
+    [Fact]
+    public async Task StatusCode_RemainsNullWhenHeaderWriteFails()
+    {
+        await using ThrowingWriteStream stream = new();
+        GeminiResponseWriter writer = new(stream);
+
+        await Assert.ThrowsAsync<IOException>(async () =>
+            await writer.WriteHeaderAsync(GeminiStatusCode.Success, "text/plain")
+        );
+
+        Assert.False(writer.HasStarted);
+        Assert.Null(writer.StatusCode);
     }
 
     [Fact]
@@ -320,5 +336,37 @@ public sealed class GeminiResponseWriterTests
     private static string ReadStream(MemoryStream stream)
     {
         return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private sealed class ThrowingWriteStream : Stream
+    {
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush() { }
+
+        public override int Read(byte[] buffer, int offset, int count) =>
+            throw new NotSupportedException();
+
+        public override long Seek(long offset, SeekOrigin origin) =>
+            throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) =>
+            throw new IOException("Write failed.");
+
+        public override ValueTask WriteAsync(
+            ReadOnlyMemory<byte> buffer,
+            CancellationToken cancellationToken = default
+        ) => ValueTask.FromException(new IOException("Write failed."));
     }
 }

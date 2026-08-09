@@ -31,6 +31,11 @@ public sealed class GeminiResponseWriter
     public bool HasStarted => _headerWritten;
 
     /// <summary>
+    /// Gets the Gemini status code whose response header was written.
+    /// </summary>
+    public GeminiStatusCode? StatusCode { get; private set; }
+
+    /// <summary>
     /// Writes the Gemini response header.
     /// </summary>
     public async ValueTask WriteHeaderAsync(
@@ -92,6 +97,7 @@ public sealed class GeminiResponseWriter
 
         _headerWritten = true;
         _statusClass = statusClass;
+        StatusCode = status;
     }
 
     private static bool IsValidMeta(int statusClass, string? meta)

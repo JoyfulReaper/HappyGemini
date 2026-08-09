@@ -2,6 +2,8 @@ using HappyGemini;
 using HappyGemini.Pages;
 using HappyGemini.Plugins;
 using HappyGemini.Server;
+using HappyGemini.Telemetry;
+using JoyfulReaperLib.MissionControl;
 using JoyfulReaperLib.TcpServer;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -11,6 +13,11 @@ builder.Services.AddWindowsService(options =>
 {
     options.ServiceName = "Happy Gemini Service";
 });
+
+// Mission Control Integration
+builder.Services.AddMissionControlClient(
+    builder.Configuration.GetSection(MissionControlClientOptions.SectionName)
+);
 
 // Gemini Configuration
 builder
@@ -112,6 +119,7 @@ builder
 builder.Services.AddSingleton<GeminiCertificateProvider>();
 builder.Services.AddSingleton<GeminiContentStore>();
 builder.Services.AddSingleton<GeminiHostValidator>();
+builder.Services.AddSingleton<TelemetryService>();
 
 builder.Services.AddScoped<GeminiPageResolver>();
 
@@ -120,6 +128,7 @@ builder.Services.AddGeminiPagesFromAssemblyContaining<HomePage>();
 builder.Services.AddGeminiPlugins(builder.Configuration);
 
 builder.Services.AddHostedService<GeminiPageStartupValidator>();
+builder.Services.AddHostedService<GeminiLifecycleService>();
 builder.Services.AddSingleton<GeminiVirtualHostResolver>();
 builder.Services.AddTcpServer<GeminiConnectionHandler, GeminiServerOptions>();
 
