@@ -1,4 +1,7 @@
 ﻿using System.Text;
+using System.Net;
+using System.Net.Sockets;
+
 namespace HappyGemini.Extensibility;
 
 /// <summary>
@@ -7,6 +10,7 @@ namespace HappyGemini.Extensibility;
 public sealed class GeminiResponseWriter
 {
     private const string UriReferenceCharacters = "-._~:/?#[]@!$&'()*+,;=";
+    private const string SubDelimiters = "!$&'()*+,;=";
 
     private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
 
@@ -176,12 +180,17 @@ public sealed class GeminiResponseWriter
         {
             char character = meta[i];
 
+            if (character <= ' ' || character >= '\x7f' || character == '\\')
+            {
+                return false;
+            }
+
             if (character == '%')
             {
                 if (
                     i + 2 >= meta.Length
-                    || !Uri.IsHexDigit(meta[i + 1])
-                    || !Uri.IsHexDigit(meta[i + 2])
+                    || !IsHexDigit(meta[i + 1])
+                    || !IsHexDigit(meta[i + 2])
                 )
                 {
                     return false;
@@ -189,15 +198,6 @@ public sealed class GeminiResponseWriter
 
                 i += 2;
                 continue;
-            }
-
-            if (
-                character is '[' or ']'
-                && fragmentStart >= 0
-                && i > fragmentStart
-            )
-            {
-                return false;
             }
 
             if (
@@ -209,23 +209,337 @@ public sealed class GeminiResponseWriter
             }
         }
 
-        if (Uri.IsWellFormedUriString(meta, UriKind.RelativeOrAbsolute))
-        {
-            return true;
-        }
+        string reference = fragmentStart >= 0 ? meta[..fragmentStart] : meta;
 
-        if (fragmentStart < 0)
+        if (
+            fragmentStart >= 0
+            && !IsValidPCharSequence(meta[(fragmentStart + 1)..], allowSlashAndQuestion: true)
+        )
         {
             return false;
         }
 
-        string referenceWithoutFragment = meta[..fragmentStart];
+        int queryStart = reference.IndexOf('?');
 
-        return referenceWithoutFragment.Length == 0
-            || Uri.IsWellFormedUriString(
-                referenceWithoutFragment,
-                UriKind.RelativeOrAbsolute
-            );
+        if (
+            queryStart >= 0
+            && !IsValidPCharSequence(reference[(queryStart + 1)..], allowSlashAndQuestion: true)
+        )
+        {
+            return false;
+        }
+
+        string referencePath = queryStart >= 0 ? reference[..queryStart] : reference;
+        int schemeSeparator = referencePath.IndexOf(':');
+
+        if (
+            schemeSeparator > 0
+            && IsValidScheme(referencePath.AsSpan(0, schemeSeparator))
+        )
+        {
+            return IsValidHierPart(referencePath[(schemeSeparator + 1)..]);
+        }
+
+        return IsValidRelativePart(referencePath);
+    }
+
+    private static bool IsValidScheme(ReadOnlySpan<char> value)
+    {
+        if (value.IsEmpty || !char.IsAsciiLetter(value[0]))
+        {
+            return false;
+        }
+
+        for (int i = 1; i < value.Length; i++)
+        {
+            char character = value[i];
+
+            if (
+                !char.IsAsciiLetterOrDigit(character)
+                && character is not '+' and not '-' and not '.'
+            )
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool IsValidHierPart(string value)
+    {
+        if (value.StartsWith("//", StringComparison.Ordinal))
+        {
+            return IsValidAuthorityAndPath(value[2..]);
+        }
+
+        if (value.Length == 0)
+        {
+            return true;
+        }
+
+        return value[0] == '/'
+            ? IsValidPathAbsolute(value)
+            : IsValidPath(value, allowColonInFirstSegment: true);
+    }
+
+    private static bool IsValidRelativePart(string value)
+    {
+        if (value.StartsWith("//", StringComparison.Ordinal))
+        {
+            return IsValidAuthorityAndPath(value[2..]);
+        }
+
+        if (value.Length == 0)
+        {
+            return true;
+        }
+
+        return value[0] == '/'
+            ? IsValidPathAbsolute(value)
+            : IsValidPath(value, allowColonInFirstSegment: false);
+    }
+
+    private static bool IsValidAuthorityAndPath(string value)
+    {
+        int pathStart = value.IndexOf('/');
+        string authority = pathStart >= 0 ? value[..pathStart] : value;
+        string path = pathStart >= 0 ? value[pathStart..] : string.Empty;
+
+        return IsValidAuthority(authority)
+            && (path.Length == 0
+                || path[0] == '/' && IsValidPath(path, allowColonInFirstSegment: true));
+    }
+
+    private static bool IsValidAuthority(string value)
+    {
+        int userInfoEnd = value.IndexOf('@');
+        string hostAndPort = value;
+
+        if (userInfoEnd >= 0)
+        {
+            if (
+                value.IndexOf('@', userInfoEnd + 1) >= 0
+                || !IsValidUriCharacterSequence(
+                    value[..userInfoEnd],
+                    allowColon: true,
+                    allowAt: false,
+                    allowSlash: false,
+                    allowQuestion: false
+                )
+            )
+            {
+                return false;
+            }
+
+            hostAndPort = value[(userInfoEnd + 1)..];
+        }
+
+        if (hostAndPort.StartsWith('['))
+        {
+            int literalEnd = hostAndPort.IndexOf(']');
+
+            if (literalEnd < 0 || !IsValidIpLiteral(hostAndPort[1..literalEnd]))
+            {
+                return false;
+            }
+
+            string remainder = hostAndPort[(literalEnd + 1)..];
+
+            return remainder.Length == 0
+                || remainder[0] == ':' && IsValidPort(remainder[1..]);
+        }
+
+        if (hostAndPort.Contains('[') || hostAndPort.Contains(']'))
+        {
+            return false;
+        }
+
+        int portStart = hostAndPort.IndexOf(':');
+        string host = hostAndPort;
+
+        if (portStart >= 0)
+        {
+            if (
+                hostAndPort.IndexOf(':', portStart + 1) >= 0
+                || !IsValidPort(hostAndPort[(portStart + 1)..])
+            )
+            {
+                return false;
+            }
+
+            host = hostAndPort[..portStart];
+        }
+
+        return IsValidUriCharacterSequence(
+            host,
+            allowColon: false,
+            allowAt: false,
+            allowSlash: false,
+            allowQuestion: false
+        );
+    }
+
+    private static bool IsValidIpLiteral(string value)
+    {
+        if (value.Length == 0 || value.Contains('%'))
+        {
+            return false;
+        }
+
+        if (value[0] is 'v' or 'V')
+        {
+            return IsValidIpvFuture(value);
+        }
+
+        return IPAddress.TryParse(value, out IPAddress? address)
+            && address.AddressFamily == AddressFamily.InterNetworkV6;
+    }
+
+    private static bool IsValidIpvFuture(string value)
+    {
+        int position = 1;
+
+        while (position < value.Length && IsHexDigit(value[position]))
+        {
+            position++;
+        }
+
+        if (position == 1 || position >= value.Length - 1 || value[position] != '.')
+        {
+            return false;
+        }
+
+        for (position++; position < value.Length; position++)
+        {
+            char character = value[position];
+
+            if (!IsUnreserved(character) && !IsSubDelimiter(character) && character != ':')
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool IsValidPort(string value)
+    {
+        foreach (char character in value)
+        {
+            if (!char.IsAsciiDigit(character))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool IsValidPathAbsolute(string value)
+    {
+        return value[0] == '/'
+            && (value.Length == 1 || value[1] != '/')
+            && IsValidPath(value, allowColonInFirstSegment: true);
+    }
+
+    private static bool IsValidPath(string value, bool allowColonInFirstSegment)
+    {
+        bool inFirstSegment = true;
+
+        for (int i = 0; i < value.Length; i++)
+        {
+            char character = value[i];
+
+            if (character == '/')
+            {
+                inFirstSegment = false;
+                continue;
+            }
+
+            if (character == '%')
+            {
+                i += 2;
+                continue;
+            }
+
+            if (
+                !IsPChar(character)
+                || inFirstSegment && !allowColonInFirstSegment && character == ':'
+            )
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool IsValidPCharSequence(string value, bool allowSlashAndQuestion)
+    {
+        return IsValidUriCharacterSequence(
+            value,
+            allowColon: true,
+            allowAt: true,
+            allowSlash: allowSlashAndQuestion,
+            allowQuestion: allowSlashAndQuestion
+        );
+    }
+
+    private static bool IsValidUriCharacterSequence(
+        string value,
+        bool allowColon,
+        bool allowAt,
+        bool allowSlash,
+        bool allowQuestion
+    )
+    {
+        for (int i = 0; i < value.Length; i++)
+        {
+            char character = value[i];
+
+            if (character == '%')
+            {
+                i += 2;
+                continue;
+            }
+
+            if (
+                !IsUnreserved(character)
+                && !IsSubDelimiter(character)
+                && !(allowColon && character == ':')
+                && !(allowAt && character == '@')
+                && !(allowSlash && character == '/')
+                && !(allowQuestion && character == '?')
+            )
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool IsPChar(char character)
+    {
+        return IsUnreserved(character)
+            || IsSubDelimiter(character)
+            || character is ':' or '@';
+    }
+
+    private static bool IsUnreserved(char character)
+    {
+        return char.IsAsciiLetterOrDigit(character) || character is '-' or '.' or '_' or '~';
+    }
+
+    private static bool IsSubDelimiter(char character)
+    {
+        return SubDelimiters.Contains(character);
+    }
+
+    private static bool IsHexDigit(char character)
+    {
+        return character is >= '0' and <= '9' or >= 'A' and <= 'F' or >= 'a' and <= 'f';
     }
 
     /// <summary>

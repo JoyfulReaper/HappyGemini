@@ -165,9 +165,32 @@ public sealed class GeminiResponseWriterTests
     }
 
     [Theory]
+    [InlineData("x:opaque")]
+    [InlineData("a:/path")]
+    [InlineData("scheme:")]
+    [InlineData("mailto:user@example.com")]
+    [InlineData("urn:isbn:0451450523")]
+    [InlineData("gemini://example.com/")]
     [InlineData("gemini://example.com/new-location")]
     [InlineData("gemini://[::1]/new-location")]
+    [InlineData("//example.com/path")]
+    [InlineData("//user@example.com/path")]
+    [InlineData("//[::1]/")]
+    [InlineData("//[v1.fe]/")]
+    [InlineData("//[vF.example]/")]
+    [InlineData("//[v1.a:b]/")]
+    [InlineData("//example.com:/")]
+    [InlineData("/absolute/path")]
     [InlineData("/new-location")]
+    [InlineData("relative/path")]
+    [InlineData("../relative")]
+    [InlineData("./this:that")]
+    [InlineData("?query")]
+    [InlineData("#fragment")]
+    [InlineData("relative?one?two")]
+    [InlineData("relative#frag?still-fragment")]
+    [InlineData("%61")]
+    [InlineData("/path%20with%20encoding")]
     public async Task WriteHeaderAsync_AllowsValidRedirect(string meta)
     {
         await using MemoryStream stream = new();
@@ -182,8 +205,23 @@ public sealed class GeminiResponseWriterTests
     [Theory]
     [InlineData("not a uri")]
     [InlineData("%ZZ")]
+    [InlineData("bad%escape")]
+    [InlineData("%")]
+    [InlineData("%1")]
     [InlineData("://bad")]
+    [InlineData("1invalid:relative")]
+    [InlineData("relative/世界")]
+    [InlineData("bad\\path")]
+    [InlineData("multiple#fragments#bad")]
+    [InlineData("//[v]/")]
+    [InlineData("//[v1.]/")]
+    [InlineData("//[vXYZ.foo]/")]
+    [InlineData("//[::1/")]
+    [InlineData("//example.com:invalid/")]
     [InlineData("/bad[path")]
+    [InlineData("relative]path")]
+    [InlineData("relative?bad[query]")]
+    [InlineData("relative#bad[fragment]")]
     public async Task WriteHeaderAsync_RejectsMalformedRedirect(string meta)
     {
         await using MemoryStream stream = new();
@@ -193,6 +231,9 @@ public sealed class GeminiResponseWriterTests
         await Assert.ThrowsAsync<ArgumentException>(async () =>
             await writer.WriteHeaderAsync(GeminiStatusCode.TemporaryRedirect, meta)
         );
+
+        Assert.False(writer.HasStarted);
+        Assert.Empty(stream.ToArray());
     }
 
     [Theory]
