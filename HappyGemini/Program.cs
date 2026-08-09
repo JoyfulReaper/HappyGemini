@@ -120,7 +120,7 @@ builder.Services.AddGeminiPagesFromAssemblyContaining<HomePage>();
 builder.Services.AddGeminiPlugins(builder.Configuration);
 
 builder.Services.AddHostedService<GeminiPageStartupValidator>();
-
+builder.Services.AddSingleton<GeminiVirtualHostResolver>();
 builder.Services.AddTcpServer<
     GeminiConnectionHandler,
     GeminiServerOptions>();

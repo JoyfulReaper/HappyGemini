@@ -14,6 +14,7 @@ public sealed class GeminiConnectionHandler(
     GeminiPageResolver pageResolver,
     GeminiContentStore contentStore,
     GeminiHostValidator hostValidator,
+    GeminiVirtualHostResolver virtualHostResolver,
     ILogger<GeminiConnectionHandler> logger) : ITcpConnectionHandler
 {
     private readonly GeminiServerOptions _options = options.Value;
@@ -92,7 +93,11 @@ public sealed class GeminiConnectionHandler(
                 request.Url,
                 context.RemoteEndPoint);
 
-            if (!hostValidator.IsServed(request.Url))
+            GeminiVirtualHost? virtualHost =
+                virtualHostResolver.Resolve(
+                    request.Url);
+
+            if (virtualHost is null)
             {
                 await response.WriteHeaderAsync(
                     GeminiStatusCode.ProxyRequestRefused,
@@ -137,7 +142,7 @@ public sealed class GeminiConnectionHandler(
             }
 
             if (contentStore.TryResolve(
-                request.Url.IdnHost,
+                virtualHost.Hostname,
                 request.Url.AbsolutePath,
                 out string? filePath) &&
                 filePath is not null)
