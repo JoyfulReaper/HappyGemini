@@ -38,7 +38,24 @@ builder.Services
         "Gemini:RequestTimeout must be positive.")
     .ValidateOnStart();
 
+// Static Content Configuration
+builder.Services
+    .AddOptions<GeminiContentOptions>()
+    .Bind(
+        builder.Configuration.GetSection(
+            GeminiContentOptions.SectionName))
+    .Validate(
+        options => !string.IsNullOrWhiteSpace(
+            options.ContentDirectory),
+        "GeminiContent:ContentDirectory must not be empty.")
+    .Validate(
+        options => !string.IsNullOrWhiteSpace(
+            options.IndexFile),
+        "GeminiContent:IndexFile must not be empty.")
+    .ValidateOnStart();
+
 builder.Services.AddSingleton<GeminiCertificateProvider>();
+builder.Services.AddSingleton<GeminiContentStore>();
 
 builder.Services.AddScoped<GeminiPageResolver>();
 
