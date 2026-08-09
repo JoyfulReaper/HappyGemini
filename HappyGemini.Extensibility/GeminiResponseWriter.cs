@@ -108,9 +108,30 @@ public sealed class GeminiResponseWriter
 
     private static bool IsValidMediaType(string meta)
     {
-        return !char.IsWhiteSpace(meta[0])
-            && !char.IsWhiteSpace(meta[^1])
-            && System.Net.Http.Headers.MediaTypeHeaderValue.TryParse(meta, out _);
+        if (char.IsWhiteSpace(meta[0]) || char.IsWhiteSpace(meta[^1]))
+        {
+            return false;
+        }
+
+        foreach (char character in meta)
+        {
+            if (!char.IsAscii(character))
+            {
+                return false;
+            }
+        }
+
+        if (
+            !System.Net.Http.Headers.MediaTypeHeaderValue.TryParse(
+                meta,
+                out System.Net.Http.Headers.MediaTypeHeaderValue? mediaType
+            )
+        )
+        {
+            return false;
+        }
+
+        return mediaType.Parameters.All(parameter => parameter.Value is not null);
     }
 
     private static bool IsValidPromptOrErrorMessage(string meta)

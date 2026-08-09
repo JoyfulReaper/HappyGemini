@@ -124,7 +124,9 @@ public sealed class GeminiResponseWriterTests
     [Theory]
     [InlineData("text/plain")]
     [InlineData("text/plain; charset=utf-8")]
+    [InlineData("text/plain; charset=\"utf-8\"")]
     [InlineData("text/gemini; charset=utf-8")]
+    [InlineData("application/json")]
     [InlineData("application/octet-stream")]
     public async Task WriteHeaderAsync_AllowsValidMimeType(string meta)
     {
@@ -144,6 +146,10 @@ public sealed class GeminiResponseWriterTests
     [InlineData("text/")]
     [InlineData(" text/plain")]
     [InlineData("text/plain ")]
+    [InlineData("text/plain; charset")]
+    [InlineData("text/plain; foo")]
+    [InlineData("text/plain; name=\"café\"")]
+    [InlineData("text/pläin")]
     public async Task WriteHeaderAsync_RejectsInvalidMimeType(string meta)
     {
         await using MemoryStream stream = new();
@@ -153,6 +159,9 @@ public sealed class GeminiResponseWriterTests
         await Assert.ThrowsAsync<ArgumentException>(async () =>
             await writer.WriteHeaderAsync(GeminiStatusCode.Success, meta)
         );
+
+        Assert.False(writer.HasStarted);
+        Assert.Empty(stream.ToArray());
     }
 
     [Theory]
