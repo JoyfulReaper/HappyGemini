@@ -43,6 +43,11 @@ public sealed class GeminiContentStore
 
         string relativePath = decodedPath.TrimStart('/');
 
+        if (OperatingSystem.IsWindows() && relativePath.Contains(':'))
+        {
+            return false;
+        }
+
         if (relativePath.Length == 0)
         {
             relativePath = virtualHost.IndexFile;

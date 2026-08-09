@@ -168,6 +168,36 @@ public sealed class GeminiContentStoreTests : IDisposable
         Assert.Null(filePath);
     }
 
+    [Theory]
+    [InlineData("/public.gmi:secret")]
+    [InlineData("/public.gmi%3Asecret")]
+    [InlineData("/public.gmi%3asecret")]
+    public void TryResolve_HandlesDecodedColonUsingPlatformFilenameRules(string requestPath)
+    {
+        string expectedPath = Path.Combine(_contentRoot, "public.gmi:secret");
+
+        if (!OperatingSystem.IsWindows())
+        {
+            File.WriteAllText(expectedPath, "content");
+        }
+
+        GeminiContentStore store = new();
+        GeminiVirtualHost host = CreateVirtualHost();
+
+        bool resolved = store.TryResolve(host, requestPath, out string? filePath);
+
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.False(resolved);
+            Assert.Null(filePath);
+        }
+        else
+        {
+            Assert.True(resolved);
+            Assert.Equal(expectedPath, filePath);
+        }
+    }
+
     [Fact]
     public void TryResolve_ResolvesOrdinaryPercentEncodedFilenameContent()
     {
