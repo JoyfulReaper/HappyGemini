@@ -1,28 +1,21 @@
 ﻿namespace HappyGemini;
 
 /// <summary>
-/// Resolves Gemini request paths to static files
-/// beneath a virtual host's content root.
+/// Resolves Gemini request paths to static files beneath a virtual host's content root.
 /// </summary>
 public sealed class GeminiContentStore
 {
-    private readonly StringComparison _pathComparison =
-        OperatingSystem.IsWindows()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
+    private readonly StringComparison _pathComparison = OperatingSystem.IsWindows()
+        ? StringComparison.OrdinalIgnoreCase
+        : StringComparison.Ordinal;
 
-    public bool TryResolve(
-        GeminiVirtualHost virtualHost,
-        string requestPath,
-        out string? filePath)
+    public bool TryResolve(GeminiVirtualHost virtualHost, string requestPath, out string? filePath)
     {
-        ArgumentNullException.ThrowIfNull(
-            virtualHost);
+        ArgumentNullException.ThrowIfNull(virtualHost);
 
         filePath = null;
 
-        if (string.IsNullOrWhiteSpace(requestPath) ||
-            requestPath[0] != '/')
+        if (string.IsNullOrWhiteSpace(requestPath) || requestPath[0] != '/')
         {
             return false;
         }
@@ -31,9 +24,7 @@ public sealed class GeminiContentStore
 
         try
         {
-            decodedPath =
-                Uri.UnescapeDataString(
-                    requestPath);
+            decodedPath = Uri.UnescapeDataString(requestPath);
         }
         catch (UriFormatException)
         {
@@ -45,35 +36,24 @@ public sealed class GeminiContentStore
             return false;
         }
 
-        string relativePath =
-            decodedPath.TrimStart('/');
+        string relativePath = decodedPath.TrimStart('/');
 
         if (relativePath.Length == 0)
         {
-            relativePath =
-                virtualHost.IndexFile;
+            relativePath = virtualHost.IndexFile;
         }
         else if (decodedPath.EndsWith('/'))
         {
-            relativePath =
-                Path.Combine(
-                    relativePath,
-                    virtualHost.IndexFile);
+            relativePath = Path.Combine(relativePath, virtualHost.IndexFile);
         }
 
-        relativePath =
-            relativePath.Replace(
-                '/',
-                Path.DirectorySeparatorChar);
+        relativePath = relativePath.Replace('/', Path.DirectorySeparatorChar);
 
         string candidatePath;
 
         try
         {
-            candidatePath =
-                Path.GetFullPath(
-                    relativePath,
-                    virtualHost.ContentRoot);
+            candidatePath = Path.GetFullPath(relativePath, virtualHost.ContentRoot);
         }
         catch (ArgumentException)
         {
@@ -88,9 +68,7 @@ public sealed class GeminiContentStore
             return false;
         }
 
-        if (!candidatePath.StartsWith(
-                virtualHost.ContentRootPrefix,
-                _pathComparison))
+        if (!candidatePath.StartsWith(virtualHost.ContentRootPrefix, _pathComparison))
         {
             return false;
         }

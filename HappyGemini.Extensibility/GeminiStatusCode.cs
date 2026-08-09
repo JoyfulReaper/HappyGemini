@@ -27,5 +27,5 @@ public enum GeminiStatusCode
 
     ClientCertificateRequired = 60,
     CertificateNotAuthorized = 61,
-    CertificateNotValid = 62
+    CertificateNotValid = 62,
 }

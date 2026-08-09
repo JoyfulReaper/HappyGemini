@@ -1,5 +1,5 @@
-﻿using HappyGemini.Extensibility;
-using System.Text;
+﻿using System.Text;
+using HappyGemini.Extensibility;
 
 namespace HappyGemini.Tests;
 
@@ -12,13 +12,9 @@ public sealed class GeminiResponseWriterTests
 
         GeminiResponseWriter writer = new(stream);
 
-        await writer.WriteHeaderAsync(
-            GeminiStatusCode.Success,
-            "text/gemini; charset=utf-8");
+        await writer.WriteHeaderAsync(GeminiStatusCode.Success, "text/gemini; charset=utf-8");
 
-        Assert.Equal(
-            "20 text/gemini; charset=utf-8\r\n",
-            ReadStream(stream));
+        Assert.Equal("20 text/gemini; charset=utf-8\r\n", ReadStream(stream));
     }
 
     [Fact]
@@ -28,12 +24,9 @@ public sealed class GeminiResponseWriterTests
 
         GeminiResponseWriter writer = new(stream);
 
-        await writer.WriteHeaderAsync(
-            GeminiStatusCode.PermanentFailure);
+        await writer.WriteHeaderAsync(GeminiStatusCode.PermanentFailure);
 
-        Assert.Equal(
-            "50\r\n",
-            ReadStream(stream));
+        Assert.Equal("50\r\n", ReadStream(stream));
     }
 
     [Fact]
@@ -43,10 +36,9 @@ public sealed class GeminiResponseWriterTests
 
         GeminiResponseWriter writer = new(stream);
 
-        await Assert.ThrowsAsync<ArgumentException>(
-            async () =>
-                await writer.WriteHeaderAsync(
-                    GeminiStatusCode.Success));
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
+            await writer.WriteHeaderAsync(GeminiStatusCode.Success)
+        );
     }
 
     [Fact]
@@ -56,10 +48,9 @@ public sealed class GeminiResponseWriterTests
 
         GeminiResponseWriter writer = new(stream);
 
-        await Assert.ThrowsAsync<ArgumentException>(
-            async () =>
-                await writer.WriteHeaderAsync(
-                    GeminiStatusCode.Input));
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
+            await writer.WriteHeaderAsync(GeminiStatusCode.Input)
+        );
     }
 
     [Fact]
@@ -69,10 +60,9 @@ public sealed class GeminiResponseWriterTests
 
         GeminiResponseWriter writer = new(stream);
 
-        await Assert.ThrowsAsync<ArgumentException>(
-            async () =>
-                await writer.WriteHeaderAsync(
-                    GeminiStatusCode.TemporaryRedirect));
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
+            await writer.WriteHeaderAsync(GeminiStatusCode.TemporaryRedirect)
+        );
     }
 
     [Fact]
@@ -82,11 +72,9 @@ public sealed class GeminiResponseWriterTests
 
         GeminiResponseWriter writer = new(stream);
 
-        await Assert.ThrowsAsync<ArgumentException>(
-            async () =>
-                await writer.WriteHeaderAsync(
-                    GeminiStatusCode.Success,
-                    "text/plain\r\nEVIL"));
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
+            await writer.WriteHeaderAsync(GeminiStatusCode.Success, "text/plain\r\nEVIL")
+        );
     }
 
     [Fact]
@@ -96,15 +84,11 @@ public sealed class GeminiResponseWriterTests
 
         GeminiResponseWriter writer = new(stream);
 
-        await writer.WriteHeaderAsync(
-            GeminiStatusCode.Success,
-            "text/plain");
+        await writer.WriteHeaderAsync(GeminiStatusCode.Success, "text/plain");
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            async () =>
-                await writer.WriteHeaderAsync(
-                    GeminiStatusCode.Success,
-                    "text/plain"));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await writer.WriteHeaderAsync(GeminiStatusCode.Success, "text/plain")
+        );
     }
 
     [Fact]
@@ -114,10 +98,9 @@ public sealed class GeminiResponseWriterTests
 
         GeminiResponseWriter writer = new(stream);
 
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
-            async () =>
-                await writer.WriteHeaderAsync(
-                    (GeminiStatusCode)99));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () =>
+            await writer.WriteHeaderAsync((GeminiStatusCode)99)
+        );
     }
 
     [Fact]
@@ -127,10 +110,9 @@ public sealed class GeminiResponseWriterTests
 
         GeminiResponseWriter writer = new(stream);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            async () =>
-                await writer.WriteTextAsync(
-                    "body"));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await writer.WriteTextAsync("body")
+        );
     }
 
     [Fact]
@@ -140,14 +122,11 @@ public sealed class GeminiResponseWriterTests
 
         GeminiResponseWriter writer = new(stream);
 
-        await writer.WriteHeaderAsync(
-            GeminiStatusCode.NotFound,
-            "Not found");
+        await writer.WriteHeaderAsync(GeminiStatusCode.NotFound, "Not found");
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            async () =>
-                await writer.WriteTextAsync(
-                    "body"));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await writer.WriteTextAsync("body")
+        );
     }
 
     [Fact]
@@ -157,22 +136,15 @@ public sealed class GeminiResponseWriterTests
 
         GeminiResponseWriter writer = new(stream);
 
-        await writer.WriteHeaderAsync(
-            GeminiStatusCode.Success,
-            "text/plain; charset=utf-8");
+        await writer.WriteHeaderAsync(GeminiStatusCode.Success, "text/plain; charset=utf-8");
 
-        await writer.WriteTextAsync(
-            "héllo");
+        await writer.WriteTextAsync("héllo");
 
-        Assert.Equal(
-            "20 text/plain; charset=utf-8\r\nhéllo",
-            ReadStream(stream));
+        Assert.Equal("20 text/plain; charset=utf-8\r\nhéllo", ReadStream(stream));
     }
 
-    private static string ReadStream(
-        MemoryStream stream)
+    private static string ReadStream(MemoryStream stream)
     {
-        return Encoding.UTF8.GetString(
-            stream.ToArray());
+        return Encoding.UTF8.GetString(stream.ToArray());
     }
 }

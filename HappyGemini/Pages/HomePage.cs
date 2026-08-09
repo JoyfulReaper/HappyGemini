@@ -10,15 +10,15 @@ public sealed class HomePage : IGeminiPage
     public async Task WriteAsync(
         GeminiRequest request,
         GeminiResponseWriter response,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await response.WriteHeaderAsync(
             GeminiStatusCode.Success,
             "text/gemini; charset=utf-8",
-            cancellationToken);
+            cancellationToken
+        );
 
-        await response.WriteTextAsync(
-            "# HappyGemini\r\n\r\nIt lives.\r\n",
-            cancellationToken);
+        await response.WriteTextAsync("# HappyGemini\r\n\r\nIt lives.\r\n", cancellationToken);
     }
 }

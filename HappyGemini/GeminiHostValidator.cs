@@ -5,9 +5,7 @@
 /// </summary>
 public sealed class GeminiHostValidator
 {
-    public bool MatchesServerName(
-        Uri url,
-        string? serverName)
+    public bool MatchesServerName(Uri url, string? serverName)
     {
         ArgumentNullException.ThrowIfNull(url);
 
@@ -24,14 +22,12 @@ public sealed class GeminiHostValidator
         return string.Equals(
             NormalizeHostname(url.IdnHost),
             NormalizeHostname(serverName),
-            StringComparison.OrdinalIgnoreCase);
+            StringComparison.OrdinalIgnoreCase
+        );
     }
 
-    private static string NormalizeHostname(
-        string hostname)
+    private static string NormalizeHostname(string hostname)
     {
-        return hostname
-            .Trim()
-            .TrimEnd('.');
+        return hostname.Trim().TrimEnd('.');
     }
 }

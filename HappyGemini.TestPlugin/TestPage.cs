@@ -10,12 +10,14 @@ public sealed class TestPage : IGeminiPage
     public async Task WriteAsync(
         GeminiRequest request,
         GeminiResponseWriter response,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await response.WriteHeaderAsync(
             GeminiStatusCode.Success,
             "text/gemini; charset=utf-8",
-            cancellationToken);
+            cancellationToken
+        );
 
         await response.WriteTextAsync(
             """
@@ -26,6 +28,7 @@ public sealed class TestPage : IGeminiPage
             If you can read this, the entire plugin pipeline works.
 
             """.ReplaceLineEndings("\r\n"),
-            cancellationToken);
+            cancellationToken
+        );
     }
 }

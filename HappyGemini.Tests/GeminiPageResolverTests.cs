@@ -9,45 +9,27 @@ public sealed class GeminiPageResolverTests
     [Fact]
     public void Resolve_ReturnsGlobalPage_WhenGlobalPagesEnabled()
     {
-        TestPage globalPage =
-            new("/test");
+        TestPage globalPage = new("/test");
 
-        GeminiPageResolver resolver =
-            new([globalPage]);
+        GeminiPageResolver resolver = new([globalPage]);
 
-        GeminiVirtualHost host =
-            CreateHost(
-                "one.example",
-                useGlobalPages: true);
+        GeminiVirtualHost host = CreateHost("one.example", useGlobalPages: true);
 
-        IGeminiPage? resolved =
-            resolver.Resolve(
-                host,
-                "/test");
+        IGeminiPage? resolved = resolver.Resolve(host, "/test");
 
-        Assert.Same(
-            globalPage,
-            resolved);
+        Assert.Same(globalPage, resolved);
     }
 
     [Fact]
     public void Resolve_DoesNotReturnGlobalPage_WhenGlobalPagesDisabled()
     {
-        TestPage globalPage =
-            new("/test");
+        TestPage globalPage = new("/test");
 
-        GeminiPageResolver resolver =
-            new([globalPage]);
+        GeminiPageResolver resolver = new([globalPage]);
 
-        GeminiVirtualHost host =
-            CreateHost(
-                "one.example",
-                useGlobalPages: false);
+        GeminiVirtualHost host = CreateHost("one.example", useGlobalPages: false);
 
-        IGeminiPage? resolved =
-            resolver.Resolve(
-                host,
-                "/test");
+        IGeminiPage? resolved = resolver.Resolve(host, "/test");
 
         Assert.Null(resolved);
     }
@@ -55,54 +37,29 @@ public sealed class GeminiPageResolverTests
     [Fact]
     public void Resolve_HostScopedPageOverridesGlobalPage()
     {
-        TestPage globalPage =
-            new("/test");
+        TestPage globalPage = new("/test");
 
-        HostScopedTestPage hostPage =
-            new(
-                "/test",
-                ["one.example"]);
+        HostScopedTestPage hostPage = new("/test", ["one.example"]);
 
-        GeminiPageResolver resolver =
-            new(
-                [
-                    globalPage,
-                    hostPage
-                ]);
+        GeminiPageResolver resolver = new([globalPage, hostPage]);
 
-        GeminiVirtualHost host =
-            CreateHost(
-                "one.example");
+        GeminiVirtualHost host = CreateHost("one.example");
 
-        IGeminiPage? resolved =
-            resolver.Resolve(
-                host,
-                "/test");
+        IGeminiPage? resolved = resolver.Resolve(host, "/test");
 
-        Assert.Same(
-            hostPage,
-            resolved);
+        Assert.Same(hostPage, resolved);
     }
 
     [Fact]
     public void Resolve_HostScopedPageDoesNotApplyToOtherHost()
     {
-        HostScopedTestPage hostPage =
-            new(
-                "/test",
-                ["one.example"]);
+        HostScopedTestPage hostPage = new("/test", ["one.example"]);
 
-        GeminiPageResolver resolver =
-            new([hostPage]);
+        GeminiPageResolver resolver = new([hostPage]);
 
-        GeminiVirtualHost host =
-            CreateHost(
-                "two.example");
+        GeminiVirtualHost host = CreateHost("two.example");
 
-        IGeminiPage? resolved =
-            resolver.Resolve(
-                host,
-                "/test");
+        IGeminiPage? resolved = resolver.Resolve(host, "/test");
 
         Assert.Null(resolved);
     }
@@ -110,236 +67,131 @@ public sealed class GeminiPageResolverTests
     [Fact]
     public void Resolve_HostScopedPageWorksWhenGlobalPagesDisabled()
     {
-        HostScopedTestPage hostPage =
-            new(
-                "/test",
-                ["one.example"]);
+        HostScopedTestPage hostPage = new("/test", ["one.example"]);
 
-        GeminiPageResolver resolver =
-            new([hostPage]);
+        GeminiPageResolver resolver = new([hostPage]);
 
-        GeminiVirtualHost host =
-            CreateHost(
-                "one.example",
-                useGlobalPages: false);
+        GeminiVirtualHost host = CreateHost("one.example", useGlobalPages: false);
 
-        IGeminiPage? resolved =
-            resolver.Resolve(
-                host,
-                "/test");
+        IGeminiPage? resolved = resolver.Resolve(host, "/test");
 
-        Assert.Same(
-            hostPage,
-            resolved);
+        Assert.Same(hostPage, resolved);
     }
 
     [Fact]
     public void Resolve_NormalizesHostScopedHostname()
     {
-        HostScopedTestPage hostPage =
-            new(
-                "/test",
-                ["ONE.EXAMPLE."]);
+        HostScopedTestPage hostPage = new("/test", ["ONE.EXAMPLE."]);
 
-        GeminiPageResolver resolver =
-            new([hostPage]);
+        GeminiPageResolver resolver = new([hostPage]);
 
-        GeminiVirtualHost host =
-            CreateHost(
-                "one.example");
+        GeminiVirtualHost host = CreateHost("one.example");
 
-        IGeminiPage? resolved =
-            resolver.Resolve(
-                host,
-                "/test");
+        IGeminiPage? resolved = resolver.Resolve(host, "/test");
 
-        Assert.Same(
-            hostPage,
-            resolved);
+        Assert.Same(hostPage, resolved);
     }
 
     [Fact]
     public void Constructor_RejectsDuplicateGlobalPaths()
     {
-        TestPage first =
-            new("/test");
+        TestPage first = new("/test");
 
-        TestPage second =
-            new("/test");
+        TestPage second = new("/test");
 
-        Assert.Throws<InvalidOperationException>(
-            () =>
-                new GeminiPageResolver(
-                    [
-                        first,
-                        second
-                    ]));
+        Assert.Throws<InvalidOperationException>(() => new GeminiPageResolver([first, second]));
     }
 
     [Fact]
     public void Constructor_RejectsDuplicateHostScopedPaths()
     {
-        HostScopedTestPage first =
-            new(
-                "/test",
-                ["one.example"]);
+        HostScopedTestPage first = new("/test", ["one.example"]);
 
-        HostScopedTestPage second =
-            new(
-                "/test",
-                ["one.example"]);
+        HostScopedTestPage second = new("/test", ["one.example"]);
 
-        Assert.Throws<InvalidOperationException>(
-            () =>
-                new GeminiPageResolver(
-                    [
-                        first,
-                        second
-                    ]));
+        Assert.Throws<InvalidOperationException>(() => new GeminiPageResolver([first, second]));
     }
 
     [Fact]
     public void Constructor_AllowsSamePathOnDifferentHosts()
     {
-        HostScopedTestPage first =
-            new(
-                "/test",
-                ["one.example"]);
+        HostScopedTestPage first = new("/test", ["one.example"]);
 
-        HostScopedTestPage second =
-            new(
-                "/test",
-                ["two.example"]);
+        HostScopedTestPage second = new("/test", ["two.example"]);
 
-        GeminiPageResolver resolver =
-            new(
-                [
-                    first,
-                    second
-                ]);
+        GeminiPageResolver resolver = new([first, second]);
 
-        GeminiVirtualHost firstHost =
-            CreateHost(
-                "one.example");
+        GeminiVirtualHost firstHost = CreateHost("one.example");
 
-        GeminiVirtualHost secondHost =
-            CreateHost(
-                "two.example");
+        GeminiVirtualHost secondHost = CreateHost("two.example");
 
-        Assert.Same(
-            first,
-            resolver.Resolve(
-                firstHost,
-                "/test"));
+        Assert.Same(first, resolver.Resolve(firstHost, "/test"));
 
-        Assert.Same(
-            second,
-            resolver.Resolve(
-                secondHost,
-                "/test"));
+        Assert.Same(second, resolver.Resolve(secondHost, "/test"));
     }
 
     [Fact]
     public void Constructor_RejectsHostScopedPageWithoutHosts()
     {
-        HostScopedTestPage page =
-            new(
-                "/test",
-                []);
+        HostScopedTestPage page = new("/test", []);
 
-        Assert.Throws<InvalidOperationException>(
-            () =>
-                new GeminiPageResolver(
-                    [page]));
+        Assert.Throws<InvalidOperationException>(() => new GeminiPageResolver([page]));
     }
 
     [Fact]
     public void Constructor_RejectsDuplicateHostsOnPage()
     {
-        HostScopedTestPage page =
-            new(
-                "/test",
-                [
-                    "one.example",
-                    "ONE.EXAMPLE."
-                ]);
+        HostScopedTestPage page = new("/test", ["one.example", "ONE.EXAMPLE."]);
 
-        Assert.Throws<InvalidOperationException>(
-            () =>
-                new GeminiPageResolver(
-                    [page]));
+        Assert.Throws<InvalidOperationException>(() => new GeminiPageResolver([page]));
     }
 
-    private static GeminiVirtualHost CreateHost(
-        string hostname,
-        bool useGlobalPages = true)
+    private static GeminiVirtualHost CreateHost(string hostname, bool useGlobalPages = true)
     {
-        GeminiServerOptions serverOptions =
-            new()
+        GeminiServerOptions serverOptions = new() { Hostnames = [hostname] };
+
+        GeminiContentOptions contentOptions = new()
+        {
+            Hosts = new Dictionary<string, GeminiHostContentOptions>
             {
-                Hostnames =
-                    [hostname]
-            };
+                [hostname] = new() { UseGlobalPages = useGlobalPages },
+            },
+        };
 
-        GeminiContentOptions contentOptions =
-            new()
-            {
-                Hosts =
-                    new Dictionary<
-                        string,
-                        GeminiHostContentOptions>
-                    {
-                        [hostname] =
-                            new()
-                            {
-                                UseGlobalPages =
-                                    useGlobalPages
-                            }
-                    }
-            };
+        GeminiVirtualHostResolver hostResolver = new(
+            Options.Create(serverOptions),
+            Options.Create(contentOptions)
+        );
 
-        GeminiVirtualHostResolver hostResolver =
-            new(
-                Options.Create(
-                    serverOptions),
-                Options.Create(
-                    contentOptions));
-
-        return hostResolver.Resolve(
-            new Uri(
-                $"gemini://{hostname}/"))!;
+        return hostResolver.Resolve(new Uri($"gemini://{hostname}/"))!;
     }
 
-    private sealed class TestPage(
-        string path) : IGeminiPage
+    private sealed class TestPage(string path) : IGeminiPage
     {
-        public string Path { get; } =
-            path;
+        public string Path { get; } = path;
 
         public Task WriteAsync(
             GeminiRequest request,
             GeminiResponseWriter response,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             return Task.CompletedTask;
         }
     }
 
-    private sealed class HostScopedTestPage(
-        string path,
-        IReadOnlyCollection<string> hostnames) :
-        IHostScopedGeminiPage
+    private sealed class HostScopedTestPage(string path, IReadOnlyCollection<string> hostnames)
+        : IHostScopedGeminiPage
     {
-        public string Path { get; } =
-            path;
+        public string Path { get; } = path;
 
-        public IReadOnlyCollection<string> Hostnames { get; } =
-            hostnames;
+        public IReadOnlyCollection<string> Hostnames { get; } = hostnames;
 
         public Task WriteAsync(
             GeminiRequest request,
             GeminiResponseWriter response,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             return Task.CompletedTask;
         }

@@ -6,6 +6,5 @@ public sealed class GeminiHostContentOptions
 
     public string? IndexFile { get; init; }
 
-    public bool UseGlobalPages { get; init; } =
-        true;
+    public bool UseGlobalPages { get; init; } = true;
 }

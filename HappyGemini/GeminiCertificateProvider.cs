@@ -1,5 +1,5 @@
-﻿using Microsoft.Extensions.Options;
-using System.Security.Cryptography.X509Certificates;
+﻿using System.Security.Cryptography.X509Certificates;
+using Microsoft.Extensions.Options;
 
 namespace HappyGemini.Server;
 
@@ -7,70 +7,63 @@ public sealed class GeminiCertificateProvider : IDisposable
 {
     private readonly Dictionary<string, X509Certificate2> _certificates;
 
-    public GeminiCertificateProvider(
-        IOptions<GeminiServerOptions> options)
+    public GeminiCertificateProvider(IOptions<GeminiServerOptions> options)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        GeminiServerOptions value =
-            options.Value;
+        GeminiServerOptions value = options.Value;
 
-        Certificate =
-            LoadCertificate(
-                value.CertificatePath,
-                value.CertificatePassword);
+        Certificate = LoadCertificate(value.CertificatePath, value.CertificatePassword);
 
-        _certificates =
-            new Dictionary<string, X509Certificate2>(
-                StringComparer.OrdinalIgnoreCase);
+        _certificates = new Dictionary<string, X509Certificate2>(StringComparer.OrdinalIgnoreCase);
 
-        foreach ((
-            string hostname,
-            GeminiCertificateOptions certificateOptions)
-            in value.Certificates)
+        foreach (
+            (string hostname, GeminiCertificateOptions certificateOptions) in value.Certificates
+        )
         {
-            string normalizedHostname =
-                NormalizeHostname(hostname);
+            string normalizedHostname = NormalizeHostname(hostname);
 
             if (normalizedHostname.Length == 0)
             {
                 throw new InvalidOperationException(
-                    "Gemini certificate hostname must not be empty.");
+                    "Gemini certificate hostname must not be empty."
+                );
             }
 
-            if (string.IsNullOrWhiteSpace(
-                    certificateOptions.Path))
+            if (string.IsNullOrWhiteSpace(certificateOptions.Path))
             {
                 throw new InvalidOperationException(
-                    $"Certificate path for Gemini host '{hostname}' must not be empty.");
+                    $"Certificate path for Gemini host '{hostname}' must not be empty."
+                );
             }
 
-            X509Certificate2 certificate =
-                LoadCertificate(
-                    certificateOptions.Path,
-                    certificateOptions.Password);
+            X509Certificate2 certificate = LoadCertificate(
+                certificateOptions.Path,
+                certificateOptions.Password
+            );
 
-            if (!_certificates.TryAdd(
-                    normalizedHostname,
-                    certificate))
+            if (!_certificates.TryAdd(normalizedHostname, certificate))
             {
                 certificate.Dispose();
 
                 throw new InvalidOperationException(
-                    $"A certificate is already configured for Gemini host '{hostname}'.");
+                    $"A certificate is already configured for Gemini host '{hostname}'."
+                );
             }
         }
     }
 
     public X509Certificate2 Certificate { get; }
 
-    public X509Certificate2 SelectCertificate(
-        string? hostname)
+    public X509Certificate2 SelectCertificate(string? hostname)
     {
-        if (!string.IsNullOrWhiteSpace(hostname) &&
-            _certificates.TryGetValue(
+        if (
+            !string.IsNullOrWhiteSpace(hostname)
+            && _certificates.TryGetValue(
                 NormalizeHostname(hostname),
-                out X509Certificate2? certificate))
+                out X509Certificate2? certificate
+            )
+        )
         {
             return certificate;
         }
@@ -80,8 +73,7 @@ public sealed class GeminiCertificateProvider : IDisposable
 
     public void Dispose()
     {
-        foreach (X509Certificate2 certificate
-            in _certificates.Values)
+        foreach (X509Certificate2 certificate in _certificates.Values)
         {
             certificate.Dispose();
         }
@@ -89,20 +81,13 @@ public sealed class GeminiCertificateProvider : IDisposable
         Certificate.Dispose();
     }
 
-    private static X509Certificate2 LoadCertificate(
-        string path,
-        string? password)
+    private static X509Certificate2 LoadCertificate(string path, string? password)
     {
-        return X509CertificateLoader.LoadPkcs12FromFile(
-            path,
-            password);
+        return X509CertificateLoader.LoadPkcs12FromFile(path, password);
     }
 
-    private static string NormalizeHostname(
-        string hostname)
+    private static string NormalizeHostname(string hostname)
     {
-        return hostname
-            .Trim()
-            .TrimEnd('.');
+        return hostname.Trim().TrimEnd('.');
     }
 }

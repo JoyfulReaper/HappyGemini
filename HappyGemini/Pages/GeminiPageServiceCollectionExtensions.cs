@@ -1,6 +1,6 @@
-﻿using HappyGemini.Extensibility;
+﻿using System.Reflection;
+using HappyGemini.Extensibility;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using System.Reflection;
 
 namespace HappyGemini.Pages;
 
@@ -14,12 +14,12 @@ public static class GeminiPageServiceCollectionExtensions
     /// containing <typeparamref name="TMarker"/>.
     /// </summary>
     public static IServiceCollection AddGeminiPagesFromAssemblyContaining<TMarker>(
-        this IServiceCollection services)
+        this IServiceCollection services
+    )
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        return services.AddGeminiPagesFromAssemblies(
-            typeof(TMarker).Assembly);
+        return services.AddGeminiPagesFromAssemblies(typeof(TMarker).Assembly);
     }
 
     /// <summary>
@@ -28,7 +28,8 @@ public static class GeminiPageServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddGeminiPagesFromAssemblies(
         this IServiceCollection services,
-        params Assembly[] assemblies)
+        params Assembly[] assemblies
+    )
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(assemblies);
@@ -37,38 +38,30 @@ public static class GeminiPageServiceCollectionExtensions
         {
             ArgumentNullException.ThrowIfNull(assembly);
 
-            IEnumerable<TypeInfo> pageTypes = assembly.DefinedTypes
-                .Where(IsAutoRegisteredPage)
-                .OrderBy(
-                    static type => type.FullName ?? type.Name,
-                    StringComparer.Ordinal);
+            IEnumerable<TypeInfo> pageTypes = assembly
+                .DefinedTypes.Where(IsAutoRegisteredPage)
+                .OrderBy(static type => type.FullName ?? type.Name, StringComparer.Ordinal);
 
             foreach (TypeInfo pageType in pageTypes)
             {
                 services.TryAddEnumerable(
-                    ServiceDescriptor.Scoped(
-                        typeof(IGeminiPage),
-                        pageType.AsType()));
+                    ServiceDescriptor.Scoped(typeof(IGeminiPage), pageType.AsType())
+                );
             }
         }
 
         return services;
     }
 
-    private static bool IsAutoRegisteredPage(
-        TypeInfo type)
+    private static bool IsAutoRegisteredPage(TypeInfo type)
     {
-        bool isPublic =
-            type.IsPublic ||
-            type.IsNestedPublic;
+        bool isPublic = type.IsPublic || type.IsNestedPublic;
 
-        return isPublic &&
-            type.IsClass &&
-            !type.IsAbstract &&
-            !type.ContainsGenericParameters &&
-            typeof(IGeminiPage).IsAssignableFrom(type) &&
-            type.IsDefined(
-                typeof(AutoRegisterGeminiPageAttribute),
-                inherit: false);
+        return isPublic
+            && type.IsClass
+            && !type.IsAbstract
+            && !type.ContainsGenericParameters
+            && typeof(IGeminiPage).IsAssignableFrom(type)
+            && type.IsDefined(typeof(AutoRegisterGeminiPageAttribute), inherit: false);
     }
 }

@@ -11,23 +11,15 @@ public sealed class GeminiPageRegistrationTests
     {
         ServiceCollection services = new();
 
-        services.AddGeminiPagesFromAssemblies(
-            typeof(GeminiPageRegistrationTests)
-                .Assembly);
+        services.AddGeminiPagesFromAssemblies(typeof(GeminiPageRegistrationTests).Assembly);
 
-        ServiceDescriptor descriptor =
-            Assert.Single(
-                services,
-                service =>
-                    service.ServiceType ==
-                        typeof(IGeminiPage));
+        ServiceDescriptor descriptor = Assert.Single(
+            services,
+            service => service.ServiceType == typeof(IGeminiPage)
+        );
 
-        Assert.Equal(
-            typeof(RegisteredPage),
-            descriptor.ImplementationType);
-        Assert.Equal(
-            ServiceLifetime.Scoped,
-            descriptor.Lifetime);
+        Assert.Equal(typeof(RegisteredPage), descriptor.ImplementationType);
+        Assert.Equal(ServiceLifetime.Scoped, descriptor.Lifetime);
     }
 
     [AutoRegisterGeminiPage]
@@ -38,7 +30,8 @@ public sealed class GeminiPageRegistrationTests
         public Task WriteAsync(
             GeminiRequest request,
             GeminiResponseWriter response,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             return Task.CompletedTask;
         }
@@ -51,7 +44,8 @@ public sealed class GeminiPageRegistrationTests
         public Task WriteAsync(
             GeminiRequest request,
             GeminiResponseWriter response,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             return Task.CompletedTask;
         }

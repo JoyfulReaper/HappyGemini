@@ -3,4 +3,5 @@
 public sealed record GeminiPluginDescriptor(
     string Id,
     string DirectoryPath,
-    string EntryAssemblyPath);
+    string EntryAssemblyPath
+);

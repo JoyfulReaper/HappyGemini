@@ -9,28 +9,23 @@ public sealed class GeminiVirtualHost
         string hostname,
         string contentRoot,
         string indexFile,
-        bool useGlobalPages)
+        bool useGlobalPages
+    )
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(
-            hostname);
+        ArgumentException.ThrowIfNullOrWhiteSpace(hostname);
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(
-            contentRoot);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentRoot);
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(
-            indexFile);
+        ArgumentException.ThrowIfNullOrWhiteSpace(indexFile);
 
         Hostname = hostname;
         ContentRoot = contentRoot;
         IndexFile = indexFile;
         UseGlobalPages = useGlobalPages;
 
-        ContentRootPrefix =
-            contentRoot.EndsWith(
-                Path.DirectorySeparatorChar)
-                ? contentRoot
-                : contentRoot +
-                    Path.DirectorySeparatorChar;
+        ContentRootPrefix = contentRoot.EndsWith(Path.DirectorySeparatorChar)
+            ? contentRoot
+            : contentRoot + Path.DirectorySeparatorChar;
     }
 
     public string Hostname { get; }

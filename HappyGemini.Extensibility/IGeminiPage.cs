@@ -16,5 +16,6 @@ public interface IGeminiPage
     Task WriteAsync(
         GeminiRequest request,
         GeminiResponseWriter response,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 }

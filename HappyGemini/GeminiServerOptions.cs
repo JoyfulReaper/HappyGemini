@@ -13,21 +13,14 @@ public sealed class GeminiServerOptions : ITcpServerOptions
     public ConnectionLimitBehavior ConnectionLimitBehavior { get; set; } =
         ConnectionLimitBehavior.Wait;
 
-    public string[] Hostnames { get; set; } =
-        ["localhost"];
+    public string[] Hostnames { get; set; } = ["localhost"];
 
     public string CertificatePath { get; set; } = "happygemini.pfx";
     public string? CertificatePassword { get; set; }
 
-    public Dictionary<string, GeminiCertificateOptions> Certificates
-    {
-        get;
-        set;
-    } = [];
+    public Dictionary<string, GeminiCertificateOptions> Certificates { get; set; } = [];
 
-    public TimeSpan HandshakeTimeout { get; set; } =
-        TimeSpan.FromSeconds(5);
+    public TimeSpan HandshakeTimeout { get; set; } = TimeSpan.FromSeconds(5);
 
-    public TimeSpan RequestTimeout { get; set; } =
-        TimeSpan.FromSeconds(10);
+    public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromSeconds(10);
 }

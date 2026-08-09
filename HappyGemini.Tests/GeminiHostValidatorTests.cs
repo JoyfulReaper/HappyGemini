@@ -11,17 +11,13 @@ public sealed class GeminiHostValidatorTests
     public void MatchesServerName_ValidatesDnsRequestAgainstSni(
         string url,
         string? serverName,
-        bool expected)
+        bool expected
+    )
     {
         GeminiHostValidator validator = new();
 
-        bool matches =
-            validator.MatchesServerName(
-                new Uri(url),
-                serverName);
+        bool matches = validator.MatchesServerName(new Uri(url), serverName);
 
-        Assert.Equal(
-            expected,
-            matches);
+        Assert.Equal(expected, matches);
     }
 }

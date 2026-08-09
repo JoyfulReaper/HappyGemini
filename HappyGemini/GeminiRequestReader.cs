@@ -1,5 +1,5 @@
-﻿using HappyGemini.Extensibility;
-using System.Text;
+﻿using System.Text;
+using HappyGemini.Extensibility;
 
 namespace HappyGemini.Server;
 
@@ -7,18 +7,16 @@ public static class GeminiRequestReader
 {
     private const int MaximumUriLength = 1024;
 
-    private static readonly UTF8Encoding Utf8 =
-        new(encoderShouldEmitUTF8Identifier: false);
+    private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
 
     public static async ValueTask<GeminiRequest?> ReadAsync(
         Stream stream,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         ArgumentNullException.ThrowIfNull(stream);
 
-        string? request = await ReadRequestLineAsync(
-            stream,
-            cancellationToken);
+        string? request = await ReadRequestLineAsync(stream, cancellationToken);
 
         if (!TryParseRequest(request, out Uri? uri))
         {
@@ -30,7 +28,8 @@ public static class GeminiRequestReader
 
     private static async ValueTask<string?> ReadRequestLineAsync(
         Stream stream,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         // 1024 bytes URI + CRLF.
         byte[] buffer = new byte[MaximumUriLength + 2];
@@ -39,9 +38,7 @@ public static class GeminiRequestReader
 
         while (count < buffer.Length)
         {
-            int read = await stream.ReadAsync(
-                buffer.AsMemory(count),
-                cancellationToken);
+            int read = await stream.ReadAsync(buffer.AsMemory(count), cancellationToken);
 
             if (read == 0)
             {
@@ -55,8 +52,7 @@ public static class GeminiRequestReader
 
             for (int i = scanStart; i < count; i++)
             {
-                if (buffer[i - 1] != '\r' ||
-                    buffer[i] != '\n')
+                if (buffer[i - 1] != '\r' || buffer[i] != '\n')
                 {
                     continue;
                 }
@@ -68,19 +64,14 @@ public static class GeminiRequestReader
                     return null;
                 }
 
-                return Utf8.GetString(
-                    buffer,
-                    0,
-                    uriLength);
+                return Utf8.GetString(buffer, 0, uriLength);
             }
         }
 
         return null;
     }
 
-    private static bool TryParseRequest(
-        string? request,
-        out Uri? uri)
+    private static bool TryParseRequest(string? request, out Uri? uri)
     {
         uri = null;
 
@@ -89,18 +80,12 @@ public static class GeminiRequestReader
             return false;
         }
 
-        if (!Uri.TryCreate(
-                request,
-                UriKind.Absolute,
-                out Uri? parsed))
+        if (!Uri.TryCreate(request, UriKind.Absolute, out Uri? parsed))
         {
             return false;
         }
 
-        if (!string.Equals(
-                parsed.Scheme,
-                "gemini",
-                StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(parsed.Scheme, "gemini", StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
