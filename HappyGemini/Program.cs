@@ -43,6 +43,35 @@ builder.Services
                 static hostname =>
                     !string.IsNullOrWhiteSpace(hostname)),
         "Gemini:Hostnames must contain at least one hostname.")
+    .Validate(
+        options =>
+            options.Hostnames
+                .Select(NormalizeHostname)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count() ==
+            options.Hostnames.Length,
+        "Gemini:Hostnames must not contain duplicate hostnames.")
+    .Validate(
+        options =>
+        {
+            HashSet<string> servedHosts =
+                options.Hostnames
+                    .Select(NormalizeHostname)
+                    .ToHashSet(
+                        StringComparer.OrdinalIgnoreCase);
+
+            return options.Certificates.All(
+                certificate =>
+                    !string.IsNullOrWhiteSpace(
+                        certificate.Key) &&
+                    certificate.Value is not null &&
+                    !string.IsNullOrWhiteSpace(
+                        certificate.Value.Path) &&
+                    servedHosts.Contains(
+                        NormalizeHostname(
+                            certificate.Key)));
+        },
+        "Gemini:Certificates entries must have a hostname served by Gemini:Hostnames and a non-empty certificate path.")
     .ValidateOnStart();
 
 // Static Content Configuration
@@ -79,3 +108,11 @@ builder.Services.AddTcpServer<
 
 var host = builder.Build();
 host.Run();
+
+static string NormalizeHostname(
+    string hostname)
+{
+    return hostname
+        .Trim()
+        .TrimEnd('.');
+}
