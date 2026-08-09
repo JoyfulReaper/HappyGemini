@@ -16,7 +16,7 @@ internal static class GeminiHostname
             return false;
         }
 
-        string value = hostname.Trim().TrimEnd('.');
+        string value = hostname.Trim();
 
         if (value.Length == 0)
         {
@@ -56,7 +56,43 @@ internal static class GeminiHostname
             return false;
         }
 
+        if (asciiHostname.EndsWith('.'))
+        {
+            if (asciiHostname.Length == 1 || asciiHostname[^2] == '.')
+            {
+                return false;
+            }
+
+            asciiHostname = asciiHostname[..^1];
+        }
+
+        if (asciiHostname.Length == 0)
+        {
+            return false;
+        }
+
         if (Uri.CheckHostName(asciiHostname) != UriHostNameType.Dns)
+        {
+            return false;
+        }
+
+        try
+        {
+            string unicodeHostname = Idn.GetUnicode(asciiHostname);
+            string roundTrippedHostname = Idn.GetAscii(unicodeHostname);
+
+            if (
+                !string.Equals(
+                    asciiHostname,
+                    roundTrippedHostname,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                return false;
+            }
+        }
+        catch (ArgumentException)
         {
             return false;
         }
