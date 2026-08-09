@@ -25,26 +25,46 @@ public sealed class GeminiResponseWriter
     /// </summary>
     public async ValueTask WriteHeaderAsync(
         GeminiStatusCode status,
-        string meta,
+        string? meta = null,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(meta);
-
         if (_headerWritten)
         {
             throw new InvalidOperationException(
                 "The Gemini response header has already been written.");
         }
 
-        if (meta.Contains('\r') || meta.Contains('\n'))
+        if (!Enum.IsDefined(status))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(status),
+                status,
+                "The Gemini status code is not defined.");
+        }
+
+        if (meta is not null &&
+            (meta.Contains('\r') || meta.Contains('\n')))
         {
             throw new ArgumentException(
                 "Gemini response metadata must not contain line breaks.",
                 nameof(meta));
         }
 
+        int statusValue = (int)status;
+        int statusClass = statusValue / 10;
+
+        if (statusClass is 1 or 2 or 3 &&
+            string.IsNullOrEmpty(meta))
+        {
+            throw new ArgumentException(
+                "Gemini 1x, 2x, and 3x responses require metadata.",
+                nameof(meta));
+        }
+
         string header =
-            $"{(int)status:D2} {meta}\r\n";
+            string.IsNullOrEmpty(meta)
+                ? $"{statusValue:D2}\r\n"
+                : $"{statusValue:D2} {meta}\r\n";
 
         byte[] bytes =
             Utf8.GetBytes(header);
