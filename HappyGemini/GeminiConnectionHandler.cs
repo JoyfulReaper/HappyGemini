@@ -137,8 +137,9 @@ public sealed class GeminiConnectionHandler(
             }
 
             if (contentStore.TryResolve(
-                    request.Url.AbsolutePath,
-                    out string? filePath) &&
+                request.Url.IdnHost,
+                request.Url.AbsolutePath,
+                out string? filePath) &&
                 filePath is not null)
             {
                 string contentType =

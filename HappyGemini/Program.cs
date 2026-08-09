@@ -88,6 +88,25 @@ builder.Services
         options => !string.IsNullOrWhiteSpace(
             options.IndexFile),
         "GeminiContent:IndexFile must not be empty.")
+    .Validate(
+    options =>
+        options.Hosts.All(
+            host =>
+                !string.IsNullOrWhiteSpace(
+                    host.Key) &&
+                host.Value is not null &&
+                !string.IsNullOrWhiteSpace(
+                    host.Value.ContentDirectory)),
+    "GeminiContent:Hosts entries must have a hostname and content directory.")
+.Validate(
+    options =>
+        options.Hosts.Keys
+            .Select(NormalizeHostname)
+            .Distinct(
+                StringComparer.OrdinalIgnoreCase)
+            .Count() ==
+        options.Hosts.Count,
+    "GeminiContent:Hosts must not contain duplicate hostnames.")
     .ValidateOnStart();
 
 builder.Services.AddSingleton<GeminiCertificateProvider>();
