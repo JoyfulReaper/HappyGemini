@@ -6,6 +6,7 @@ namespace HappyGemini.Server;
 public static class GeminiRequestReader
 {
     private const int MaximumUriLength = 1024;
+    private const string AllowedWireCharacters = "-._~:/?#@!$&'()*+,;=";
 
     private static readonly UTF8Encoding Utf8 = new(
         encoderShouldEmitUTF8Identifier: false,
@@ -90,6 +91,11 @@ public static class GeminiRequestReader
             return false;
         }
 
+        if (!IsValidWireUri(request))
+        {
+            return false;
+        }
+
         if (!Uri.TryCreate(request, UriKind.Absolute, out Uri? parsed))
         {
             return false;
@@ -117,5 +123,85 @@ public static class GeminiRequestReader
 
         uri = parsed;
         return true;
+    }
+
+    private static bool IsValidWireUri(string value)
+    {
+        int schemeSeparator = value.IndexOf(':');
+
+        if (
+            schemeSeparator <= 0
+            || !char.IsAsciiLetter(value[0])
+            || schemeSeparator + 2 >= value.Length
+            || value[schemeSeparator + 1] != '/'
+            || value[schemeSeparator + 2] != '/'
+        )
+        {
+            return false;
+        }
+
+        for (int i = 1; i < schemeSeparator; i++)
+        {
+            char character = value[i];
+
+            if (
+                !char.IsAsciiLetterOrDigit(character)
+                && character is not '+' and not '-' and not '.'
+            )
+            {
+                return false;
+            }
+        }
+
+        int authorityStart = schemeSeparator + 3;
+        int authorityEnd = value.IndexOfAny(['/', '?', '#'], authorityStart);
+
+        if (authorityEnd < 0)
+        {
+            authorityEnd = value.Length;
+        }
+
+        for (int i = 0; i < value.Length; i++)
+        {
+            char character = value[i];
+
+            if (character <= ' ' || character >= '\x7f' || character == '\\')
+            {
+                return false;
+            }
+
+            if (character == '%')
+            {
+                if (
+                    i + 2 >= value.Length
+                    || !IsHexDigit(value[i + 1])
+                    || !IsHexDigit(value[i + 2])
+                )
+                {
+                    return false;
+                }
+
+                i += 2;
+                continue;
+            }
+
+            if (
+                char.IsAsciiLetterOrDigit(character)
+                || AllowedWireCharacters.Contains(character)
+                || character is '[' or ']' && i >= authorityStart && i < authorityEnd
+            )
+            {
+                continue;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsHexDigit(char character)
+    {
+        return character is >= '0' and <= '9' or >= 'A' and <= 'F' or >= 'a' and <= 'f';
     }
 }

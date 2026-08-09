@@ -48,6 +48,53 @@ public sealed class GeminiRequestReaderTests
     }
 
     [Theory]
+    [InlineData("gemini://example.com/café")]
+    [InlineData("gemini://café.example/")]
+    [InlineData("gemini://example.com/a path")]
+    [InlineData("gemini://example.com/a\\path")]
+    [InlineData("gemini://example.com/%ZZ")]
+    [InlineData("gemini://example.com/%2")]
+    [InlineData("gemini://example.com/%")]
+    [InlineData("g%65mini://example.com/")]
+    [InlineData("gemini://example.com/a|b")]
+    [InlineData("gemini://example.com/a[b")]
+    [InlineData("gemini://example.com/path?query=bad value")]
+    public async Task ReadAsync_RejectsInvalidWireUriSyntax(string uri)
+    {
+        await using MemoryStream stream = CreateRequestStream(uri);
+
+        var request = await GeminiRequestReader.ReadAsync(stream, CancellationToken.None);
+
+        Assert.Null(request);
+    }
+
+    [Fact]
+    public async Task ReadAsync_RejectsAsciiControlCharacterInUri()
+    {
+        const string uri = "gemini://example.com/path\u001fsegment";
+
+        await using MemoryStream stream = CreateRequestStream(uri);
+
+        var request = await GeminiRequestReader.ReadAsync(stream, CancellationToken.None);
+
+        Assert.Null(request);
+    }
+
+    [Fact]
+    public async Task ReadAsync_AcceptsPercentEncodedUtf8AndQueryContent()
+    {
+        const string uri =
+            "gemini://example.com/caf%C3%A9?query=hello%20world&check=%E2%9C%93/path?value";
+
+        await using MemoryStream stream = CreateRequestStream(uri);
+
+        var request = await GeminiRequestReader.ReadAsync(stream, CancellationToken.None);
+
+        Assert.NotNull(request);
+        Assert.Equal(uri, request.Url.AbsoluteUri);
+    }
+
+    [Theory]
     [InlineData("gemini://example.com/")]
     [InlineData("gemini://example.com/\n")]
     [InlineData("gemini://exam")]
