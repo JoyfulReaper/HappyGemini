@@ -133,35 +133,20 @@ public sealed class GeminiConnectionHandler(
 
             if (page is not null)
             {
-                try
-                {
-                    await page.WriteAsync(request, response, requestTimeout.Token);
-                }
-                catch (Exception exception)
-                    when (exception is not OperationCanceledException and not IOException)
-                {
-                    Type pageType = page.GetType();
+                bool shouldShutdownGracefully = await ExecutePageAsync(
+                    page,
+                    request,
+                    response,
+                    context.RemoteEndPoint,
+                    logger,
+                    requestTimeout.Token
+                );
 
-                    logger.LogError(
-                        exception,
-                        "Gemini page {PageType} failed for host {RequestHost}, path {RequestPath}, from {Remote}.",
-                        pageType.FullName ?? pageType.Name,
-                        request.Url.IdnHost,
-                        request.Url.AbsolutePath,
-                        context.RemoteEndPoint
-                    );
-
-                    if (!response.HasStarted)
-                    {
-                        await response.WriteHeaderAsync(
-                            GeminiStatusCode.TemporaryFailure,
-                            "Temporary failure",
-                            requestTimeout.Token
-                        );
-                    }
+                if (shouldShutdownGracefully)
+                {
+                    await sslStream.ShutdownAsync();
                 }
 
-                await sslStream.ShutdownAsync();
                 return;
             }
 
@@ -257,5 +242,67 @@ public sealed class GeminiConnectionHandler(
                 context.RemoteEndPoint
             );
         }
+    }
+
+    internal static async Task<bool> ExecutePageAsync(
+        IGeminiPage page,
+        GeminiRequest request,
+        GeminiResponseWriter response,
+        EndPoint? remoteEndPoint,
+        ILogger logger,
+        CancellationToken cancellationToken
+    )
+    {
+        Type pageType = page.GetType();
+        string pageTypeName = pageType.FullName ?? pageType.Name;
+
+        try
+        {
+            await page.WriteAsync(request, response, cancellationToken);
+        }
+        catch (Exception exception)
+            when (exception is not OperationCanceledException and not IOException)
+        {
+            logger.LogError(
+                exception,
+                "Gemini page {PageType} failed for host {RequestHost}, path {RequestPath}, from {Remote}.",
+                pageTypeName,
+                request.Url.IdnHost,
+                request.Url.AbsolutePath,
+                remoteEndPoint
+            );
+
+            if (response.HasStarted)
+            {
+                return false;
+            }
+
+            await response.WriteHeaderAsync(
+                GeminiStatusCode.TemporaryFailure,
+                "Temporary failure",
+                cancellationToken
+            );
+
+            return true;
+        }
+
+        if (!response.HasStarted)
+        {
+            logger.LogWarning(
+                "Gemini page {PageType} completed without a response for host {RequestHost}, path {RequestPath}, from {Remote}.",
+                pageTypeName,
+                request.Url.IdnHost,
+                request.Url.AbsolutePath,
+                remoteEndPoint
+            );
+
+            await response.WriteHeaderAsync(
+                GeminiStatusCode.TemporaryFailure,
+                "Temporary failure",
+                cancellationToken
+            );
+        }
+
+        return true;
     }
 }
