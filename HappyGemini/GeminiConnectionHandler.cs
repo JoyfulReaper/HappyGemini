@@ -117,6 +117,18 @@ public sealed class GeminiConnectionHandler(
                 return;
             }
 
+            if (!hostValidator.TargetsServerPort(request.Url, _options.Port))
+            {
+                await response.WriteHeaderAsync(
+                    GeminiStatusCode.ProxyRequestRefused,
+                    "Port not served",
+                    requestTimeout.Token
+                );
+
+                await sslStream.ShutdownAsync();
+                return;
+            }
+
             IGeminiPage? page = pageResolver.Resolve(virtualHost, request.Url.AbsolutePath);
 
             if (page is not null)
