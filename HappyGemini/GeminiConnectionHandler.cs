@@ -109,24 +109,22 @@ public sealed class GeminiConnectionHandler(
             if (contentStore.TryResolve(
                     request.Url.AbsolutePath,
                     out string? filePath) &&
-                filePath is not null &&
-                string.Equals(
-                    Path.GetExtension(filePath),
-                    ".gmi",
-                    StringComparison.OrdinalIgnoreCase))
+                filePath is not null)
             {
+                string contentType =
+                    GeminiContentTypeProvider.GetContentType(
+                        filePath);
+
                 await response.WriteHeaderAsync(
                     GeminiStatusCode.Success,
-                    "text/gemini; charset=utf-8",
+                    contentType,
                     requestTimeout.Token);
 
-                string content =
-                    await File.ReadAllTextAsync(
-                        filePath,
-                        requestTimeout.Token);
+                await using FileStream fileStream =
+                    File.OpenRead(filePath);
 
-                await response.WriteTextAsync(
-                    content,
+                await response.WriteStreamAsync(
+                    fileStream,
                     requestTimeout.Token);
 
                 await sslStream.ShutdownAsync();
