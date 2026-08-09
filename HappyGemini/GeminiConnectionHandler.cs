@@ -1,4 +1,5 @@
 ﻿using HappyGemini.Extensibility;
+using HappyGemini.Pages;
 using JoyfulReaperLib.TcpServer;
 using Microsoft.Extensions.Options;
 using System.Net;
@@ -10,6 +11,7 @@ namespace HappyGemini.Server;
 public sealed class GeminiConnectionHandler(
     GeminiCertificateProvider certificateProvider,
     IOptions<GeminiServerOptions> options,
+    GeminiPageResolver pageResolver,
     ILogger<GeminiConnectionHandler> logger) : ITcpConnectionHandler
 {
     private readonly GeminiServerOptions _options = options.Value;
@@ -88,13 +90,23 @@ public sealed class GeminiConnectionHandler(
                 request.Url,
                 context.RemoteEndPoint);
 
-            await response.WriteHeaderAsync(
-                GeminiStatusCode.Success,
-                "text/gemini; charset=utf-8",
-                requestTimeout.Token);
+            IGeminiPage? page =
+                pageResolver.Resolve(request.Url.AbsolutePath);
 
-            await response.WriteTextAsync(
-                "# HappyGemini\r\n\r\nIt lives.\r\n",
+            if (page is null)
+            {
+                await response.WriteHeaderAsync(
+                    GeminiStatusCode.NotFound,
+                    "Not found",
+                    requestTimeout.Token);
+
+                await sslStream.ShutdownAsync();
+                return;
+            }
+
+            await page.WriteAsync(
+                request,
+                response,
                 requestTimeout.Token);
 
             await sslStream.ShutdownAsync();
