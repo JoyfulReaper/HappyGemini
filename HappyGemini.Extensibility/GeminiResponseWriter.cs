@@ -1,5 +1,4 @@
 ﻿using System.Text;
-
 namespace HappyGemini.Extensibility;
 
 /// <summary>
@@ -7,6 +6,8 @@ namespace HappyGemini.Extensibility;
 /// </summary>
 public sealed class GeminiResponseWriter
 {
+    private const string UriReferenceCharacters = "-._~:/?#[]@!$&'()*+,;=";
+
     private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
 
     private readonly Stream _output;
@@ -64,6 +65,14 @@ public sealed class GeminiResponseWriter
             );
         }
 
+        if (!IsValidMeta(statusClass, meta))
+        {
+            throw new ArgumentException(
+                "Gemini response metadata is invalid for the status code.",
+                nameof(meta)
+            );
+        }
+
         string header = string.IsNullOrEmpty(meta)
             ? $"{statusValue:D2}\r\n"
             : $"{statusValue:D2} {meta}\r\n";
@@ -74,6 +83,123 @@ public sealed class GeminiResponseWriter
 
         _headerWritten = true;
         _statusClass = statusClass;
+    }
+
+    private static bool IsValidMeta(int statusClass, string? meta)
+    {
+        if (string.IsNullOrEmpty(meta))
+        {
+            return true;
+        }
+
+        return statusClass switch
+        {
+            1 or 4 or 5 or 6 => IsValidPromptOrErrorMessage(meta),
+            2 => IsValidMediaType(meta),
+            3 => IsValidUriReference(meta),
+            _ => false,
+        };
+    }
+
+    private static bool IsValidMediaType(string meta)
+    {
+        return !char.IsWhiteSpace(meta[0])
+            && !char.IsWhiteSpace(meta[^1])
+            && System.Net.Http.Headers.MediaTypeHeaderValue.TryParse(meta, out _);
+    }
+
+    private static bool IsValidPromptOrErrorMessage(string meta)
+    {
+        for (int i = 0; i < meta.Length; i++)
+        {
+            char character = meta[i];
+
+            if (char.IsControl(character))
+            {
+                return false;
+            }
+
+            if (!char.IsSurrogate(character))
+            {
+                continue;
+            }
+
+            if (
+                !char.IsHighSurrogate(character)
+                || i + 1 >= meta.Length
+                || !char.IsLowSurrogate(meta[++i])
+            )
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool IsValidUriReference(string meta)
+    {
+        int fragmentStart = meta.IndexOf('#');
+
+        if (fragmentStart >= 0 && meta.IndexOf('#', fragmentStart + 1) >= 0)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < meta.Length; i++)
+        {
+            char character = meta[i];
+
+            if (character == '%')
+            {
+                if (
+                    i + 2 >= meta.Length
+                    || !Uri.IsHexDigit(meta[i + 1])
+                    || !Uri.IsHexDigit(meta[i + 2])
+                )
+                {
+                    return false;
+                }
+
+                i += 2;
+                continue;
+            }
+
+            if (
+                character is '[' or ']'
+                && fragmentStart >= 0
+                && i > fragmentStart
+            )
+            {
+                return false;
+            }
+
+            if (
+                !char.IsAsciiLetterOrDigit(character)
+                && !UriReferenceCharacters.Contains(character)
+            )
+            {
+                return false;
+            }
+        }
+
+        if (Uri.IsWellFormedUriString(meta, UriKind.RelativeOrAbsolute))
+        {
+            return true;
+        }
+
+        if (fragmentStart < 0)
+        {
+            return false;
+        }
+
+        string referenceWithoutFragment = meta[..fragmentStart];
+
+        return referenceWithoutFragment.Length == 0
+            || Uri.IsWellFormedUriString(
+                referenceWithoutFragment,
+                UriKind.RelativeOrAbsolute
+            );
     }
 
     /// <summary>

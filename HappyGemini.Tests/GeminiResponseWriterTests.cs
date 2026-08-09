@@ -78,6 +78,116 @@ public sealed class GeminiResponseWriterTests
     }
 
     [Fact]
+    public async Task WriteHeaderAsync_AllowsUnicodeInputPrompt()
+    {
+        await using MemoryStream stream = new();
+
+        GeminiResponseWriter writer = new(stream);
+
+        await writer.WriteHeaderAsync(GeminiStatusCode.Input, "Search for café 世界 🔍");
+
+        Assert.Equal("10 Search for café 世界 🔍\r\n", ReadStream(stream));
+    }
+
+    [Theory]
+    [InlineData(GeminiStatusCode.Input, "Prompt\ttext")]
+    [InlineData(GeminiStatusCode.TemporaryFailure, "Error\0text")]
+    [InlineData(GeminiStatusCode.ClientCertificateRequired, "Error\u007ftext")]
+    public async Task WriteHeaderAsync_RejectsControlCharactersInPromptOrErrorMeta(
+        GeminiStatusCode status,
+        string meta
+    )
+    {
+        await using MemoryStream stream = new();
+
+        GeminiResponseWriter writer = new(stream);
+
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
+            await writer.WriteHeaderAsync(status, meta)
+        );
+    }
+
+    [Theory]
+    [InlineData("text/plain")]
+    [InlineData("text/plain; charset=utf-8")]
+    [InlineData("text/gemini; charset=utf-8")]
+    [InlineData("application/octet-stream")]
+    public async Task WriteHeaderAsync_AllowsValidMimeType(string meta)
+    {
+        await using MemoryStream stream = new();
+
+        GeminiResponseWriter writer = new(stream);
+
+        await writer.WriteHeaderAsync(GeminiStatusCode.Success, meta);
+
+        Assert.Equal($"20 {meta}\r\n", ReadStream(stream));
+    }
+
+    [Theory]
+    [InlineData("not a mime")]
+    [InlineData("text")]
+    [InlineData("/plain")]
+    [InlineData("text/")]
+    [InlineData(" text/plain")]
+    [InlineData("text/plain ")]
+    public async Task WriteHeaderAsync_RejectsInvalidMimeType(string meta)
+    {
+        await using MemoryStream stream = new();
+
+        GeminiResponseWriter writer = new(stream);
+
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
+            await writer.WriteHeaderAsync(GeminiStatusCode.Success, meta)
+        );
+    }
+
+    [Theory]
+    [InlineData("gemini://example.com/new-location")]
+    [InlineData("gemini://[::1]/new-location")]
+    [InlineData("/new-location")]
+    public async Task WriteHeaderAsync_AllowsValidRedirect(string meta)
+    {
+        await using MemoryStream stream = new();
+
+        GeminiResponseWriter writer = new(stream);
+
+        await writer.WriteHeaderAsync(GeminiStatusCode.TemporaryRedirect, meta);
+
+        Assert.Equal($"30 {meta}\r\n", ReadStream(stream));
+    }
+
+    [Theory]
+    [InlineData("not a uri")]
+    [InlineData("%ZZ")]
+    [InlineData("://bad")]
+    [InlineData("/bad[path")]
+    public async Task WriteHeaderAsync_RejectsMalformedRedirect(string meta)
+    {
+        await using MemoryStream stream = new();
+
+        GeminiResponseWriter writer = new(stream);
+
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
+            await writer.WriteHeaderAsync(GeminiStatusCode.TemporaryRedirect, meta)
+        );
+    }
+
+    [Theory]
+    [InlineData(GeminiStatusCode.TemporaryFailure)]
+    [InlineData(GeminiStatusCode.PermanentFailure)]
+    [InlineData(GeminiStatusCode.ClientCertificateRequired)]
+    public async Task WriteHeaderAsync_AllowsEmptyOptionalErrorMeta(GeminiStatusCode status)
+    {
+        await using MemoryStream stream = new();
+
+        GeminiResponseWriter writer = new(stream);
+
+        await writer.WriteHeaderAsync(status, string.Empty);
+
+        Assert.Equal($"{(int)status:D2}\r\n", ReadStream(stream));
+    }
+
+    [Fact]
     public async Task WriteHeaderAsync_RejectsSecondHeader()
     {
         await using MemoryStream stream = new();
