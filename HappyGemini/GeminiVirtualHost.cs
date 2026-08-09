@@ -8,7 +8,8 @@ public sealed class GeminiVirtualHost
     internal GeminiVirtualHost(
         string hostname,
         string contentRoot,
-        string indexFile)
+        string indexFile,
+        bool useGlobalPages)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(
             hostname);
@@ -22,6 +23,7 @@ public sealed class GeminiVirtualHost
         Hostname = hostname;
         ContentRoot = contentRoot;
         IndexFile = indexFile;
+        UseGlobalPages = useGlobalPages;
 
         ContentRootPrefix =
             contentRoot.EndsWith(
@@ -36,6 +38,8 @@ public sealed class GeminiVirtualHost
     public string ContentRoot { get; }
 
     public string IndexFile { get; }
+
+    public bool UseGlobalPages { get; }
 
     internal string ContentRootPrefix { get; }
 }

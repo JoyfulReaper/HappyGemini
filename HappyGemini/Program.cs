@@ -94,10 +94,8 @@ builder.Services
             host =>
                 !string.IsNullOrWhiteSpace(
                     host.Key) &&
-                host.Value is not null &&
-                !string.IsNullOrWhiteSpace(
-                    host.Value.ContentDirectory)),
-    "GeminiContent:Hosts entries must have a hostname and content directory.")
+                host.Value is not null),
+    "GeminiContent:Hosts entries must have a hostname.")
 .Validate(
     options =>
         options.Hosts.Keys

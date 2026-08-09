@@ -51,14 +51,20 @@ public sealed class GeminiVirtualHostResolver
                     hostOptions);
 
             string contentDirectory =
-                hostOptions?.ContentDirectory ??
-                content.ContentDirectory;
+                string.IsNullOrWhiteSpace(
+                    hostOptions?.ContentDirectory)
+                    ? content.ContentDirectory
+                    : hostOptions.ContentDirectory;
 
             string indexFile =
                 string.IsNullOrWhiteSpace(
                     hostOptions?.IndexFile)
                     ? content.IndexFile
                     : hostOptions.IndexFile;
+
+            bool useGlobalPages =
+                hostOptions?.UseGlobalPages ??
+                true;
 
             string contentRoot =
                 ResolveContentRoot(
@@ -68,7 +74,8 @@ public sealed class GeminiVirtualHostResolver
                 new(
                     normalizedHostname,
                     contentRoot,
-                    indexFile);
+                    indexFile,
+                    useGlobalPages);
 
             if (!_hosts.TryAdd(
                     normalizedHostname,

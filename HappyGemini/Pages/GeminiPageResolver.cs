@@ -71,6 +71,11 @@ public sealed class GeminiPageResolver
             return hostPage;
         }
 
+        if (!virtualHost.UseGlobalPages)
+        {
+            return null;
+        }
+
         return _globalPages.TryGetValue(
             normalizedPath,
             out IGeminiPage? globalPage)
