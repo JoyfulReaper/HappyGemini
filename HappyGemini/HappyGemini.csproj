@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Worker">
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -15,6 +15,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\HappyGemini.Extensibility\HappyGemini.Extensibility.csproj" />
-    <ProjectReference Include="..\HappyGemini.TestPlugin\HappyGemini.TestPlugin.csproj" />
+    <ProjectReference Include="..\HappyGemini.TestPlugin\HappyGemini.TestPlugin.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>
