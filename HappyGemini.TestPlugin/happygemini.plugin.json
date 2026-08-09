@@ -1,0 +1,4 @@
+{
+  "id": "HappyGemini.Tests.TestPlugin",
+  "entryAssembly": "HappyGemini.TestPlugin.dll"
+}

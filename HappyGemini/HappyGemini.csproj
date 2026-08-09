@@ -15,5 +15,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\HappyGemini.Extensibility\HappyGemini.Extensibility.csproj" />
+    <ProjectReference Include="..\HappyGemini.TestPlugin\HappyGemini.TestPlugin.csproj" />
   </ItemGroup>
 </Project>
