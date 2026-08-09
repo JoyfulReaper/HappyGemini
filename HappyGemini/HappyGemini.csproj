@@ -12,4 +12,8 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.10" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HappyGemini.Extensibility\HappyGemini.Extensibility.csproj" />
+  </ItemGroup>
 </Project>

@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="HappyGemini.Extensibility/HappyGemini.Extensibility.csproj" Id="0ca7db00-49b2-40fb-bdb6-2f03f0227614" />
   <Project Path="HappyGemini/HappyGemini.csproj" />
 </Solution>
