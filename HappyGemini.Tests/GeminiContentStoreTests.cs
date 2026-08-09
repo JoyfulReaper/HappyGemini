@@ -146,6 +146,48 @@ public sealed class GeminiContentStoreTests : IDisposable
         Assert.Null(filePath);
     }
 
+    [Theory]
+    [InlineData("/private%2Fsecret.gmi")]
+    [InlineData("/private%2fsecret.gmi")]
+    [InlineData("/private%5Csecret.gmi")]
+    [InlineData("/private%5csecret.gmi")]
+    public void TryResolve_RejectsEncodedPathSeparators(string requestPath)
+    {
+        string directory = Path.Combine(_contentRoot, "private");
+
+        Directory.CreateDirectory(directory);
+
+        File.WriteAllText(Path.Combine(directory, "secret.gmi"), "secret");
+
+        GeminiContentStore store = new();
+        GeminiVirtualHost host = CreateVirtualHost();
+
+        bool resolved = store.TryResolve(host, requestPath, out string? filePath);
+
+        Assert.False(resolved);
+        Assert.Null(filePath);
+    }
+
+    [Fact]
+    public void TryResolve_ResolvesOrdinaryPercentEncodedFilenameContent()
+    {
+        string expectedPath = Path.Combine(_contentRoot, "hello world-~-café.gmi");
+
+        File.WriteAllText(expectedPath, "# Hello");
+
+        GeminiContentStore store = new();
+        GeminiVirtualHost host = CreateVirtualHost();
+
+        bool resolved = store.TryResolve(
+            host,
+            "/hello%20world-%7E-caf%C3%A9.gmi",
+            out string? filePath
+        );
+
+        Assert.True(resolved);
+        Assert.Equal(expectedPath, filePath);
+    }
+
     [Fact]
     public void TryResolve_ReturnsFalseForMissingFile()
     {

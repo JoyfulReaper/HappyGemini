@@ -20,6 +20,11 @@ public sealed class GeminiContentStore
             return false;
         }
 
+        if (ContainsEncodedPathSeparator(requestPath))
+        {
+            return false;
+        }
+
         string decodedPath;
 
         try
@@ -80,5 +85,26 @@ public sealed class GeminiContentStore
 
         filePath = candidatePath;
         return true;
+    }
+
+    private static bool ContainsEncodedPathSeparator(string path)
+    {
+        for (int i = 0; i + 2 < path.Length; i++)
+        {
+            if (path[i] != '%')
+            {
+                continue;
+            }
+
+            if (
+                path[i + 1] == '2' && path[i + 2] is 'F' or 'f'
+                || path[i + 1] == '5' && path[i + 2] is 'C' or 'c'
+            )
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
