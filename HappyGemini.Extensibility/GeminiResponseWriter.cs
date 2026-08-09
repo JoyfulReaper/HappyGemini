@@ -3,7 +3,7 @@
 namespace HappyGemini.Extensibility;
 
 /// <summary>
-/// Writes Gemini response headers and text bodies to a connection.
+/// Writes Gemini response headers and bodies to a connection.
 /// </summary>
 public sealed class GeminiResponseWriter
 {
@@ -46,8 +46,11 @@ public sealed class GeminiResponseWriter
         string header =
             $"{(int)status:D2} {meta}\r\n";
 
-        await WriteRawAsync(
-            header,
+        byte[] bytes =
+            Utf8.GetBytes(header);
+
+        await _output.WriteAsync(
+            bytes,
             cancellationToken);
 
         _headerWritten = true;
@@ -62,25 +65,52 @@ public sealed class GeminiResponseWriter
     {
         ArgumentNullException.ThrowIfNull(text);
 
+        EnsureHeaderWritten();
+
+        byte[] bytes =
+            Utf8.GetBytes(text);
+
+        return _output.WriteAsync(
+            bytes,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Writes raw bytes to the Gemini response body.
+    /// </summary>
+    public ValueTask WriteBytesAsync(
+        ReadOnlyMemory<byte> bytes,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureHeaderWritten();
+
+        return _output.WriteAsync(
+            bytes,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Copies a stream to the Gemini response body.
+    /// </summary>
+    public async Task WriteStreamAsync(
+        Stream source,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        EnsureHeaderWritten();
+
+        await source.CopyToAsync(
+            _output,
+            cancellationToken);
+    }
+
+    private void EnsureHeaderWritten()
+    {
         if (!_headerWritten)
         {
             throw new InvalidOperationException(
                 "The Gemini response header must be written before the body.");
         }
-
-        return WriteRawAsync(
-            text,
-            cancellationToken);
-    }
-
-    private ValueTask WriteRawAsync(
-        string value,
-        CancellationToken cancellationToken)
-    {
-        byte[] bytes = Utf8.GetBytes(value);
-
-        return _output.WriteAsync(
-            bytes,
-            cancellationToken);
     }
 }
