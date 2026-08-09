@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="HappyGemini.Extensibility/HappyGemini.Extensibility.csproj" Id="0ca7db00-49b2-40fb-bdb6-2f03f0227614" />
   <Project Path="HappyGemini.TestPlugin/HappyGemini.TestPlugin.csproj" Id="30853e3b-8001-40eb-8382-b0c55e09cbd8" />
+  <Project Path="HappyGemini.Tests/HappyGemini.Tests.csproj" Id="356caed4-fa31-456d-bfdd-7e8177e2e212" />
   <Project Path="HappyGemini/HappyGemini.csproj" />
 </Solution>
