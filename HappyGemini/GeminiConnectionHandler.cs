@@ -103,6 +103,24 @@ public sealed class GeminiConnectionHandler(
                 return;
             }
 
+            if (!hostValidator.MatchesServerName(
+                    request.Url,
+                    sslStream.TargetHostName))
+            {
+                logger.LogDebug(
+                    "Gemini request host {RequestHost} did not match TLS SNI host {ServerName}.",
+                    request.Url.IdnHost,
+                    sslStream.TargetHostName);
+
+                await response.WriteHeaderAsync(
+                    GeminiStatusCode.ProxyRequestRefused,
+                    "TLS server name does not match request host",
+                    requestTimeout.Token);
+
+                await sslStream.ShutdownAsync();
+                return;
+            }
+
             IGeminiPage? page =
                 pageResolver.Resolve(
                     request.Url.AbsolutePath);

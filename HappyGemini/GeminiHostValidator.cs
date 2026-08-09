@@ -28,6 +28,31 @@ public sealed class GeminiHostValidator
             NormalizeHostname(url.IdnHost));
     }
 
+    public bool MatchesServerName(
+        Uri url,
+        string? serverName)
+    {
+        ArgumentNullException.ThrowIfNull(url);
+
+        // Gemini clients SHOULD omit SNI when the URI
+        // authority is an IP address, so only enforce
+        // matching for DNS hostnames.
+        if (url.HostNameType != UriHostNameType.Dns)
+        {
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(serverName))
+        {
+            return false;
+        }
+
+        return string.Equals(
+            NormalizeHostname(url.IdnHost),
+            NormalizeHostname(serverName),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string NormalizeHostname(
         string hostname)
     {
