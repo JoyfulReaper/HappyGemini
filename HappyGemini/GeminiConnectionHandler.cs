@@ -170,17 +170,64 @@ public sealed class GeminiConnectionHandler(
                 && filePath is not null
             )
             {
-                string contentType = GeminiContentTypeProvider.GetContentType(filePath);
+                FileStream fileStream;
 
-                await response.WriteHeaderAsync(
-                    GeminiStatusCode.Success,
-                    contentType,
-                    requestTimeout.Token
-                );
+                try
+                {
+                    fileStream = File.OpenRead(filePath);
+                }
+                catch (IOException exception)
+                    when (exception is FileNotFoundException or DirectoryNotFoundException)
+                {
+                    logger.LogDebug(
+                        "Resolved static file disappeared for host {RequestHost}, path {RequestPath}, from {Remote}.",
+                        request.Url.IdnHost,
+                        request.Url.AbsolutePath,
+                        context.RemoteEndPoint
+                    );
 
-                await using FileStream fileStream = File.OpenRead(filePath);
+                    await response.WriteHeaderAsync(
+                        GeminiStatusCode.NotFound,
+                        "Not found",
+                        requestTimeout.Token
+                    );
 
-                await response.WriteStreamAsync(fileStream, requestTimeout.Token);
+                    await sslStream.ShutdownAsync();
+                    return;
+                }
+                catch (Exception exception)
+                    when (exception is UnauthorizedAccessException or IOException)
+                {
+                    logger.LogWarning(
+                        "Unable to open static file for host {RequestHost}, path {RequestPath}, from {Remote}: {ErrorType}.",
+                        request.Url.IdnHost,
+                        request.Url.AbsolutePath,
+                        context.RemoteEndPoint,
+                        exception.GetType().Name
+                    );
+
+                    await response.WriteHeaderAsync(
+                        GeminiStatusCode.TemporaryFailure,
+                        "Temporary failure",
+                        requestTimeout.Token
+                    );
+
+                    await sslStream.ShutdownAsync();
+                    return;
+                }
+
+                await using (fileStream)
+                {
+                    string contentType = GeminiContentTypeProvider.GetContentType(filePath);
+
+                    await response.WriteHeaderAsync(
+                        GeminiStatusCode.Success,
+                        contentType,
+                        requestTimeout.Token
+                    );
+
+                    await response.WriteStreamAsync(fileStream, requestTimeout.Token);
+                }
 
                 await sslStream.ShutdownAsync();
                 return;
