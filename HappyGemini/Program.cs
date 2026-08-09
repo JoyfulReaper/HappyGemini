@@ -36,6 +36,13 @@ builder.Services
     .Validate(
         options => options.RequestTimeout > TimeSpan.Zero,
         "Gemini:RequestTimeout must be positive.")
+    .Validate(
+        options =>
+            options.Hostnames is { Length: > 0 } &&
+            options.Hostnames.All(
+                static hostname =>
+                    !string.IsNullOrWhiteSpace(hostname)),
+        "Gemini:Hostnames must contain at least one hostname.")
     .ValidateOnStart();
 
 // Static Content Configuration
@@ -56,6 +63,7 @@ builder.Services
 
 builder.Services.AddSingleton<GeminiCertificateProvider>();
 builder.Services.AddSingleton<GeminiContentStore>();
+builder.Services.AddSingleton<GeminiHostValidator>();
 
 builder.Services.AddScoped<GeminiPageResolver>();
 

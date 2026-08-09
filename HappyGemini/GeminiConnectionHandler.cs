@@ -13,6 +13,7 @@ public sealed class GeminiConnectionHandler(
     IOptions<GeminiServerOptions> options,
     GeminiPageResolver pageResolver,
     GeminiContentStore contentStore,
+    GeminiHostValidator hostValidator,
     ILogger<GeminiConnectionHandler> logger) : ITcpConnectionHandler
 {
     private readonly GeminiServerOptions _options = options.Value;
@@ -90,6 +91,17 @@ public sealed class GeminiConnectionHandler(
                 "Gemini request {Uri} from {Remote}",
                 request.Url,
                 context.RemoteEndPoint);
+
+            if (!hostValidator.IsServed(request.Url))
+            {
+                await response.WriteHeaderAsync(
+                    GeminiStatusCode.ProxyRequestRefused,
+                    "Host not served",
+                    requestTimeout.Token);
+
+                await sslStream.ShutdownAsync();
+                return;
+            }
 
             IGeminiPage? page =
                 pageResolver.Resolve(
