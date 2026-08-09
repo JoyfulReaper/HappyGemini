@@ -7,7 +7,10 @@ public static class GeminiRequestReader
 {
     private const int MaximumUriLength = 1024;
 
-    private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
+    private static readonly UTF8Encoding Utf8 = new(
+        encoderShouldEmitUTF8Identifier: false,
+        throwOnInvalidBytes: true
+    );
 
     public static async ValueTask<GeminiRequest?> ReadAsync(
         Stream stream,
@@ -18,7 +21,7 @@ public static class GeminiRequestReader
 
         string? request = await ReadRequestLineAsync(stream, cancellationToken);
 
-        if (!TryParseRequest(request, out Uri? uri))
+        if (!TryParseRequest(request, out Uri? uri) || uri is null)
         {
             return null;
         }
@@ -64,7 +67,14 @@ public static class GeminiRequestReader
                     return null;
                 }
 
-                return Utf8.GetString(buffer, 0, uriLength);
+                try
+                {
+                    return Utf8.GetString(buffer, 0, uriLength);
+                }
+                catch (DecoderFallbackException)
+                {
+                    return null;
+                }
             }
         }
 

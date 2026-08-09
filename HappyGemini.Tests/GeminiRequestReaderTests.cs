@@ -127,6 +127,42 @@ public sealed class GeminiRequestReaderTests
         Assert.Equal(uri, request.Url.AbsoluteUri);
     }
 
+    [Fact]
+    public async Task ReadAsync_RejectsMalformedUtf8SequenceWithinUri()
+    {
+        byte[] requestBytes =
+        [
+            .. Encoding.ASCII.GetBytes("gemini://example.com/path/"),
+            0xC3,
+            0x28,
+            .. Encoding.ASCII.GetBytes("/tail\r\n"),
+        ];
+
+        await using MemoryStream stream = new(requestBytes);
+
+        var request = await GeminiRequestReader.ReadAsync(stream, CancellationToken.None);
+
+        Assert.Null(request);
+    }
+
+    [Fact]
+    public async Task ReadAsync_RejectsTruncatedUtf8SequenceBeforeCrLf()
+    {
+        byte[] requestBytes =
+        [
+            .. Encoding.ASCII.GetBytes("gemini://example.com/path/"),
+            0xE2,
+            (byte)'\r',
+            (byte)'\n',
+        ];
+
+        await using MemoryStream stream = new(requestBytes);
+
+        var request = await GeminiRequestReader.ReadAsync(stream, CancellationToken.None);
+
+        Assert.Null(request);
+    }
+
     private static MemoryStream CreateRequestStream(string uri)
     {
         return CreateStream(uri + "\r\n");
