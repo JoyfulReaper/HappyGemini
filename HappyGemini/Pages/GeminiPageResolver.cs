@@ -80,14 +80,12 @@ public sealed class GeminiPageResolver
 
         foreach (string hostname in page.Hostnames)
         {
-            if (string.IsNullOrWhiteSpace(hostname))
+            if (!GeminiHostname.TryNormalize(hostname, out string normalizedHostname))
             {
                 throw new InvalidOperationException(
-                    $"Host-scoped Gemini page '{page.GetType().FullName}' contains an empty hostname."
+                    $"Host-scoped Gemini page '{page.GetType().FullName}' contains invalid host '{hostname}'."
                 );
             }
-
-            string normalizedHostname = NormalizeHostname(hostname);
 
             if (!pageHosts.Add(normalizedHostname))
             {
@@ -127,10 +125,5 @@ public sealed class GeminiPageResolver
         }
 
         return path[0] == '/' ? path : "/" + path;
-    }
-
-    private static string NormalizeHostname(string hostname)
-    {
-        return hostname.Trim().TrimEnd('.');
     }
 }

@@ -67,7 +67,7 @@ public sealed class GeminiVirtualHostResolverTests
         GeminiVirtualHost? host = resolver.Resolve(new Uri("gemini://ONE.EXAMPLE./"));
 
         Assert.NotNull(host);
-        Assert.Equal("ONE.EXAMPLE", host.Hostname);
+        Assert.Equal("one.example", host.Hostname);
         Assert.Equal(Path.GetFullPath(hostContentDirectory), host.ContentRoot);
         Assert.Equal("host-index.gmi", host.IndexFile);
         Assert.False(host.UseGlobalPages);
@@ -125,6 +125,66 @@ public sealed class GeminiVirtualHostResolverTests
     public void Constructor_RejectsHostnamesDuplicatedAfterNormalization()
     {
         GeminiServerOptions serverOptions = new() { Hostnames = ["one.example", " ONE.EXAMPLE. "] };
+
+        Assert.Throws<InvalidOperationException>(() =>
+            CreateResolver(serverOptions, new GeminiContentOptions())
+        );
+    }
+
+    [Fact]
+    public void Resolve_CanonicalizesUnicodeHostnameToPunycode()
+    {
+        GeminiVirtualHostResolver resolver = CreateResolver(
+            new GeminiServerOptions { Hostnames = ["bücher.example"] },
+            new GeminiContentOptions
+            {
+                Hosts = new Dictionary<string, GeminiHostContentOptions>
+                {
+                    ["xn--bcher-kva.example"] = new() { UseGlobalPages = false },
+                },
+            }
+        );
+
+        GeminiVirtualHost? host = resolver.Resolve(
+            new Uri("gemini://xn--bcher-kva.example/")
+        );
+
+        Assert.NotNull(host);
+        Assert.Equal("xn--bcher-kva.example", host.Hostname);
+        Assert.False(host.UseGlobalPages);
+    }
+
+    [Fact]
+    public void Resolve_CanonicalizesEquivalentIpv6Addresses()
+    {
+        GeminiVirtualHostResolver resolver = CreateResolver(
+            new GeminiServerOptions { Hostnames = ["0:0:0:0:0:0:0:1"] },
+            new GeminiContentOptions()
+        );
+
+        GeminiVirtualHost? host = resolver.Resolve(new Uri("gemini://[::1]/"));
+
+        Assert.NotNull(host);
+        Assert.Equal("::1", host.Hostname);
+    }
+
+    [Fact]
+    public void Constructor_RejectsInvalidConfiguredHostname()
+    {
+        GeminiServerOptions serverOptions = new() { Hostnames = ["invalid host"] };
+
+        Assert.Throws<ArgumentException>(() =>
+            CreateResolver(serverOptions, new GeminiContentOptions())
+        );
+    }
+
+    [Fact]
+    public void Constructor_RejectsUnicodeAndPunycodeDuplicateHostnames()
+    {
+        GeminiServerOptions serverOptions = new()
+        {
+            Hostnames = ["bücher.example", "xn--bcher-kva.example"],
+        };
 
         Assert.Throws<InvalidOperationException>(() =>
             CreateResolver(serverOptions, new GeminiContentOptions())

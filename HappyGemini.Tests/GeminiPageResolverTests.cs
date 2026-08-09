@@ -146,6 +146,25 @@ public sealed class GeminiPageResolverTests
         Assert.Throws<InvalidOperationException>(() => new GeminiPageResolver([page]));
     }
 
+    [Fact]
+    public void Constructor_RejectsUnicodeAndPunycodeDuplicateHostsOnPage()
+    {
+        HostScopedTestPage page = new(
+            "/test",
+            ["bücher.example", "xn--bcher-kva.example"]
+        );
+
+        Assert.Throws<InvalidOperationException>(() => new GeminiPageResolver([page]));
+    }
+
+    [Fact]
+    public void Constructor_RejectsInvalidHostOnPage()
+    {
+        HostScopedTestPage page = new("/test", ["invalid host"]);
+
+        Assert.Throws<InvalidOperationException>(() => new GeminiPageResolver([page]));
+    }
+
     private static GeminiVirtualHost CreateHost(string hostname, bool useGlobalPages = true)
     {
         GeminiServerOptions serverOptions = new() { Hostnames = [hostname] };

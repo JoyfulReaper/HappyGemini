@@ -30,15 +30,8 @@ public sealed class GeminiHostValidator
             return false;
         }
 
-        return string.Equals(
-            NormalizeHostname(url.IdnHost),
-            NormalizeHostname(serverName),
-            StringComparison.OrdinalIgnoreCase
-        );
-    }
-
-    private static string NormalizeHostname(string hostname)
-    {
-        return hostname.Trim().TrimEnd('.');
+        return GeminiHostname.TryNormalize(url.IdnHost, out string requestHostname)
+            && GeminiHostname.TryNormalize(serverName, out string sniHostname)
+            && string.Equals(requestHostname, sniHostname, StringComparison.OrdinalIgnoreCase);
     }
 }

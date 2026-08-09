@@ -21,12 +21,10 @@ public sealed class GeminiCertificateProvider : IDisposable
             (string hostname, GeminiCertificateOptions certificateOptions) in value.Certificates
         )
         {
-            string normalizedHostname = NormalizeHostname(hostname);
-
-            if (normalizedHostname.Length == 0)
+            if (!GeminiHostname.TryNormalize(hostname, out string normalizedHostname))
             {
                 throw new InvalidOperationException(
-                    "Gemini certificate hostname must not be empty."
+                    $"Gemini certificate hostname '{hostname}' is invalid."
                 );
             }
 
@@ -58,11 +56,8 @@ public sealed class GeminiCertificateProvider : IDisposable
     public X509Certificate2 SelectCertificate(string? hostname)
     {
         if (
-            !string.IsNullOrWhiteSpace(hostname)
-            && _certificates.TryGetValue(
-                NormalizeHostname(hostname),
-                out X509Certificate2? certificate
-            )
+            GeminiHostname.TryNormalize(hostname, out string normalizedHostname)
+            && _certificates.TryGetValue(normalizedHostname, out X509Certificate2? certificate)
         )
         {
             return certificate;
@@ -84,10 +79,5 @@ public sealed class GeminiCertificateProvider : IDisposable
     private static X509Certificate2 LoadCertificate(string path, string? password)
     {
         return X509CertificateLoader.LoadPkcs12FromFile(path, password);
-    }
-
-    private static string NormalizeHostname(string hostname)
-    {
-        return hostname.Trim().TrimEnd('.');
     }
 }

@@ -43,29 +43,37 @@ builder
     .Validate(
         options =>
             options.Hostnames is { Length: > 0 }
-            && options.Hostnames.All(static hostname => !string.IsNullOrWhiteSpace(hostname)),
-        "Gemini:Hostnames must contain at least one hostname."
+            && TryNormalizeHostnames(options.Hostnames, out _),
+        "Gemini:Hostnames must contain at least one valid hostname."
     )
     .Validate(
         options =>
-            options
-                .Hostnames.Select(NormalizeHostname)
+            TryNormalizeHostnames(options.Hostnames, out string[] normalizedHostnames)
+            && normalizedHostnames
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Count() == options.Hostnames.Length,
+                .Count() == normalizedHostnames.Length,
         "Gemini:Hostnames must not contain duplicate hostnames."
     )
     .Validate(
         options =>
         {
-            HashSet<string> servedHosts = options
-                .Hostnames.Select(NormalizeHostname)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (!TryNormalizeHostnames(options.Hostnames, out string[] normalizedHostnames))
+            {
+                return false;
+            }
+
+            HashSet<string> servedHosts = normalizedHostnames.ToHashSet(
+                StringComparer.OrdinalIgnoreCase
+            );
 
             return options.Certificates.All(certificate =>
-                !string.IsNullOrWhiteSpace(certificate.Key)
-                && certificate.Value is not null
+                certificate.Value is not null
                 && !string.IsNullOrWhiteSpace(certificate.Value.Path)
-                && servedHosts.Contains(NormalizeHostname(certificate.Key))
+                && GeminiHostname.TryNormalize(
+                    certificate.Key,
+                    out string normalizedCertificateHostname
+                )
+                && servedHosts.Contains(normalizedCertificateHostname)
             );
         },
         "Gemini:Certificates entries must have a hostname served by Gemini:Hostnames and a non-empty certificate path."
@@ -87,16 +95,16 @@ builder
     .Validate(
         options =>
             options.Hosts.All(host =>
-                !string.IsNullOrWhiteSpace(host.Key) && host.Value is not null
+                host.Value is not null && GeminiHostname.TryNormalize(host.Key, out _)
             ),
-        "GeminiContent:Hosts entries must have a hostname."
+        "GeminiContent:Hosts entries must have a valid hostname."
     )
     .Validate(
         options =>
-            options
-                .Hosts.Keys.Select(NormalizeHostname)
+            TryNormalizeHostnames(options.Hosts.Keys, out string[] normalizedHostnames)
+            && normalizedHostnames
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Count() == options.Hosts.Count,
+                .Count() == normalizedHostnames.Length,
         "GeminiContent:Hosts must not contain duplicate hostnames."
     )
     .ValidateOnStart();
@@ -118,7 +126,30 @@ builder.Services.AddTcpServer<GeminiConnectionHandler, GeminiServerOptions>();
 var host = builder.Build();
 host.Run();
 
-static string NormalizeHostname(string hostname)
+static bool TryNormalizeHostnames(
+    IEnumerable<string>? hostnames,
+    out string[] normalizedHostnames
+)
 {
-    return hostname.Trim().TrimEnd('.');
+    normalizedHostnames = [];
+
+    if (hostnames is null)
+    {
+        return false;
+    }
+
+    List<string> normalized = [];
+
+    foreach (string hostname in hostnames)
+    {
+        if (!GeminiHostname.TryNormalize(hostname, out string value))
+        {
+            return false;
+        }
+
+        normalized.Add(value);
+    }
+
+    normalizedHostnames = normalized.ToArray();
+    return true;
 }

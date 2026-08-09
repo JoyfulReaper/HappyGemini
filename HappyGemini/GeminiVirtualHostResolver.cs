@@ -23,7 +23,7 @@ public sealed class GeminiVirtualHostResolver
         GeminiContentOptions content = contentOptions.Value;
 
         Dictionary<string, GeminiHostContentOptions> hostContent = content.Hosts.ToDictionary(
-            entry => NormalizeHostname(entry.Key),
+            entry => GeminiHostname.Normalize(entry.Key),
             entry => entry.Value,
             StringComparer.OrdinalIgnoreCase
         );
@@ -32,7 +32,7 @@ public sealed class GeminiVirtualHostResolver
 
         foreach (string hostname in server.Hostnames)
         {
-            string normalizedHostname = NormalizeHostname(hostname);
+            string normalizedHostname = GeminiHostname.Normalize(hostname);
 
             hostContent.TryGetValue(normalizedHostname, out GeminiHostContentOptions? hostOptions);
 
@@ -68,7 +68,12 @@ public sealed class GeminiVirtualHostResolver
     {
         ArgumentNullException.ThrowIfNull(url);
 
-        _hosts.TryGetValue(NormalizeHostname(url.IdnHost), out GeminiVirtualHost? host);
+        if (!GeminiHostname.TryNormalize(url.IdnHost, out string normalizedHostname))
+        {
+            return null;
+        }
+
+        _hosts.TryGetValue(normalizedHostname, out GeminiVirtualHost? host);
 
         return host;
     }
@@ -83,10 +88,5 @@ public sealed class GeminiVirtualHostResolver
         }
 
         return Path.GetFullPath(contentDirectory, AppContext.BaseDirectory);
-    }
-
-    private static string NormalizeHostname(string hostname)
-    {
-        return hostname.Trim().TrimEnd('.');
     }
 }
