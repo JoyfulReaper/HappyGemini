@@ -79,8 +79,9 @@ public sealed class GeminiConnectionHandler(
             };
 
             logger.LogInformation(
-                "Gemini request {Uri} from {Remote}",
-                request.Url,
+                "Gemini request for host {Host}, path {Path}, from {Remote}",
+                request.Url.IdnHost,
+                request.Url.AbsolutePath,
                 context.RemoteEndPoint
             );
 
