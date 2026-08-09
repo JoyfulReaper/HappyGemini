@@ -19,6 +19,12 @@ public sealed class GeminiServerOptions : ITcpServerOptions
     public string CertificatePath { get; set; } = "happygemini.pfx";
     public string? CertificatePassword { get; set; }
 
+    public Dictionary<string, GeminiCertificateOptions> Certificates
+    {
+        get;
+        set;
+    } = [];
+
     public TimeSpan HandshakeTimeout { get; set; } =
         TimeSpan.FromSeconds(5);
 
