@@ -89,6 +89,86 @@ public sealed class GeminiResponseWriterTests
                     "text/plain\r\nEVIL"));
     }
 
+    [Fact]
+    public async Task WriteHeaderAsync_RejectsSecondHeader()
+    {
+        await using MemoryStream stream = new();
+
+        GeminiResponseWriter writer = new(stream);
+
+        await writer.WriteHeaderAsync(
+            GeminiStatusCode.Success,
+            "text/plain");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () =>
+                await writer.WriteHeaderAsync(
+                    GeminiStatusCode.Success,
+                    "text/plain"));
+    }
+
+    [Fact]
+    public async Task WriteHeaderAsync_RejectsUndefinedStatus()
+    {
+        await using MemoryStream stream = new();
+
+        GeminiResponseWriter writer = new(stream);
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            async () =>
+                await writer.WriteHeaderAsync(
+                    (GeminiStatusCode)99));
+    }
+
+    [Fact]
+    public async Task WriteTextAsync_RejectsBodyBeforeHeader()
+    {
+        await using MemoryStream stream = new();
+
+        GeminiResponseWriter writer = new(stream);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () =>
+                await writer.WriteTextAsync(
+                    "body"));
+    }
+
+    [Fact]
+    public async Task WriteTextAsync_RejectsBodyForNonSuccessResponse()
+    {
+        await using MemoryStream stream = new();
+
+        GeminiResponseWriter writer = new(stream);
+
+        await writer.WriteHeaderAsync(
+            GeminiStatusCode.NotFound,
+            "Not found");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () =>
+                await writer.WriteTextAsync(
+                    "body"));
+    }
+
+    [Fact]
+    public async Task WriteTextAsync_WritesUtf8BodyForSuccessResponse()
+    {
+        await using MemoryStream stream = new();
+
+        GeminiResponseWriter writer = new(stream);
+
+        await writer.WriteHeaderAsync(
+            GeminiStatusCode.Success,
+            "text/plain; charset=utf-8");
+
+        await writer.WriteTextAsync(
+            "héllo");
+
+        Assert.Equal(
+            "20 text/plain; charset=utf-8\r\nhéllo",
+            ReadStream(stream));
+    }
+
     private static string ReadStream(
         MemoryStream stream)
     {

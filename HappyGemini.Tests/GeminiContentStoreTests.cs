@@ -177,6 +177,38 @@ public sealed class GeminiContentStoreTests :
         Assert.Null(filePath);
     }
 
+    [Fact]
+    public void TryResolve_RejectsTraversalIntoSiblingWithSharedPrefix()
+    {
+        string siblingRoot =
+            _contentRoot + "-private";
+
+        Directory.CreateDirectory(
+            siblingRoot);
+
+        string outsidePath =
+            Path.Combine(
+                siblingRoot,
+                "secret.gmi");
+
+        File.WriteAllText(
+            outsidePath,
+            "secret");
+
+        GeminiContentStore store = new();
+        GeminiVirtualHost host =
+            CreateVirtualHost();
+
+        bool resolved =
+            store.TryResolve(
+                host,
+                "/../content-private/secret.gmi",
+                out string? filePath);
+
+        Assert.False(resolved);
+        Assert.Null(filePath);
+    }
+
     [Theory]
     [InlineData("/..\\outside\\secret.gmi")]
     [InlineData("/..%5coutside%5csecret.gmi")]
