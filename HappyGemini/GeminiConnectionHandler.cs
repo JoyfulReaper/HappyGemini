@@ -128,6 +128,7 @@ public sealed class GeminiConnectionHandler(
 
             IGeminiPage? page =
                 pageResolver.Resolve(
+                    virtualHost,
                     request.Url.AbsolutePath);
 
             if (page is not null)
