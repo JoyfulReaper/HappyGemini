@@ -66,10 +66,27 @@ public sealed class GeminiContentStore
                 '/',
                 Path.DirectorySeparatorChar);
 
-        string candidatePath =
-            Path.GetFullPath(
-                relativePath,
-                virtualHost.ContentRoot);
+        string candidatePath;
+
+        try
+        {
+            candidatePath =
+                Path.GetFullPath(
+                    relativePath,
+                    virtualHost.ContentRoot);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
+        catch (PathTooLongException)
+        {
+            return false;
+        }
 
         if (!candidatePath.StartsWith(
                 virtualHost.ContentRootPrefix,
