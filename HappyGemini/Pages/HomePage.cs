@@ -2,6 +2,7 @@
 
 namespace HappyGemini.Pages;
 
+[AutoRegisterGeminiPage]
 public sealed class HomePage : IGeminiPage
 {
     public string Path => "/";
