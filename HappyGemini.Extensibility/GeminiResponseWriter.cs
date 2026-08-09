@@ -22,6 +22,11 @@ public sealed class GeminiResponseWriter
     }
 
     /// <summary>
+    /// Gets whether the Gemini response header has been written.
+    /// </summary>
+    public bool HasStarted => _headerWritten;
+
+    /// <summary>
     /// Writes the Gemini response header.
     /// </summary>
     public async ValueTask WriteHeaderAsync(

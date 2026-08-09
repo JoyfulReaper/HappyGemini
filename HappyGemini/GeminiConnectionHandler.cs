@@ -133,7 +133,33 @@ public sealed class GeminiConnectionHandler(
 
             if (page is not null)
             {
-                await page.WriteAsync(request, response, requestTimeout.Token);
+                try
+                {
+                    await page.WriteAsync(request, response, requestTimeout.Token);
+                }
+                catch (Exception exception)
+                    when (exception is not OperationCanceledException and not IOException)
+                {
+                    Type pageType = page.GetType();
+
+                    logger.LogError(
+                        exception,
+                        "Gemini page {PageType} failed for host {RequestHost}, path {RequestPath}, from {Remote}.",
+                        pageType.FullName ?? pageType.Name,
+                        request.Url.IdnHost,
+                        request.Url.AbsolutePath,
+                        context.RemoteEndPoint
+                    );
+
+                    if (!response.HasStarted)
+                    {
+                        await response.WriteHeaderAsync(
+                            GeminiStatusCode.TemporaryFailure,
+                            "Temporary failure",
+                            requestTimeout.Token
+                        );
+                    }
+                }
 
                 await sslStream.ShutdownAsync();
                 return;

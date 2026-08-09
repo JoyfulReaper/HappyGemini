@@ -6,6 +6,20 @@ namespace HappyGemini.Tests;
 public sealed class GeminiResponseWriterTests
 {
     [Fact]
+    public async Task HasStarted_ChangesAfterHeaderIsWritten()
+    {
+        await using MemoryStream stream = new();
+
+        GeminiResponseWriter writer = new(stream);
+
+        Assert.False(writer.HasStarted);
+
+        await writer.WriteHeaderAsync(GeminiStatusCode.Success, "text/plain");
+
+        Assert.True(writer.HasStarted);
+    }
+
+    [Fact]
     public async Task WriteHeaderAsync_WritesSuccessHeader()
     {
         await using MemoryStream stream = new();
