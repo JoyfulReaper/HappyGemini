@@ -11,22 +11,64 @@ public sealed class GeminiVirtualHostResolver
         _hosts;
 
     public GeminiVirtualHostResolver(
-        IOptions<GeminiServerOptions> options)
+        IOptions<GeminiServerOptions> serverOptions,
+        IOptions<GeminiContentOptions> contentOptions)
     {
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(
+            serverOptions);
+
+        ArgumentNullException.ThrowIfNull(
+            contentOptions);
+
+        GeminiServerOptions server =
+            serverOptions.Value;
+
+        GeminiContentOptions content =
+            contentOptions.Value;
+
+        Dictionary<string, GeminiHostContentOptions>
+            hostContent =
+                content.Hosts.ToDictionary(
+                    entry =>
+                        NormalizeHostname(
+                            entry.Key),
+                    entry => entry.Value,
+                    StringComparer.OrdinalIgnoreCase);
 
         _hosts =
             new Dictionary<string, GeminiVirtualHost>(
                 StringComparer.OrdinalIgnoreCase);
 
         foreach (string hostname
-            in options.Value.Hostnames)
+            in server.Hostnames)
         {
             string normalizedHostname =
                 NormalizeHostname(hostname);
 
+            hostContent.TryGetValue(
+                normalizedHostname,
+                out GeminiHostContentOptions?
+                    hostOptions);
+
+            string contentDirectory =
+                hostOptions?.ContentDirectory ??
+                content.ContentDirectory;
+
+            string indexFile =
+                string.IsNullOrWhiteSpace(
+                    hostOptions?.IndexFile)
+                    ? content.IndexFile
+                    : hostOptions.IndexFile;
+
+            string contentRoot =
+                ResolveContentRoot(
+                    contentDirectory);
+
             GeminiVirtualHost host =
-                new(normalizedHostname);
+                new(
+                    normalizedHostname,
+                    contentRoot,
+                    indexFile);
 
             if (!_hosts.TryAdd(
                     normalizedHostname,
@@ -48,6 +90,24 @@ public sealed class GeminiVirtualHostResolver
             out GeminiVirtualHost? host);
 
         return host;
+    }
+
+    private static string ResolveContentRoot(
+        string contentDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            contentDirectory);
+
+        if (Path.IsPathRooted(
+                contentDirectory))
+        {
+            return Path.GetFullPath(
+                contentDirectory);
+        }
+
+        return Path.GetFullPath(
+            contentDirectory,
+            AppContext.BaseDirectory);
     }
 
     private static string NormalizeHostname(

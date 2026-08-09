@@ -142,7 +142,7 @@ public sealed class GeminiConnectionHandler(
             }
 
             if (contentStore.TryResolve(
-                virtualHost.Hostname,
+                virtualHost,
                 request.Url.AbsolutePath,
                 out string? filePath) &&
                 filePath is not null)
