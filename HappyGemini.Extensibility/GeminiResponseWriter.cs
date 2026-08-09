@@ -12,6 +12,7 @@ public sealed class GeminiResponseWriter
 
     private readonly Stream _output;
     private bool _headerWritten;
+    private int? _statusClass;
 
     public GeminiResponseWriter(Stream output)
     {
@@ -74,6 +75,7 @@ public sealed class GeminiResponseWriter
             cancellationToken);
 
         _headerWritten = true;
+        _statusClass = statusClass;
     }
 
     /// <summary>
@@ -85,7 +87,7 @@ public sealed class GeminiResponseWriter
     {
         ArgumentNullException.ThrowIfNull(text);
 
-        EnsureHeaderWritten();
+        EnsureBodyAllowed();
 
         byte[] bytes =
             Utf8.GetBytes(text);
@@ -102,7 +104,7 @@ public sealed class GeminiResponseWriter
         ReadOnlyMemory<byte> bytes,
         CancellationToken cancellationToken = default)
     {
-        EnsureHeaderWritten();
+        EnsureBodyAllowed();
 
         return _output.WriteAsync(
             bytes,
@@ -118,19 +120,25 @@ public sealed class GeminiResponseWriter
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        EnsureHeaderWritten();
+        EnsureBodyAllowed();
 
         await source.CopyToAsync(
             _output,
             cancellationToken);
     }
 
-    private void EnsureHeaderWritten()
+    private void EnsureBodyAllowed()
     {
         if (!_headerWritten)
         {
             throw new InvalidOperationException(
                 "The Gemini response header must be written before the body.");
+        }
+
+        if (_statusClass != 2)
+        {
+            throw new InvalidOperationException(
+                "Gemini response bodies are only valid for 2x success responses.");
         }
     }
 }
