@@ -12,6 +12,7 @@ public sealed class GeminiConnectionHandler(
     GeminiCertificateProvider certificateProvider,
     IOptions<GeminiServerOptions> options,
     GeminiPageResolver pageResolver,
+    GeminiContentStore contentStore,
     ILogger<GeminiConnectionHandler> logger) : ITcpConnectionHandler
 {
     private readonly GeminiServerOptions _options = options.Value;
@@ -91,22 +92,50 @@ public sealed class GeminiConnectionHandler(
                 context.RemoteEndPoint);
 
             IGeminiPage? page =
-                pageResolver.Resolve(request.Url.AbsolutePath);
+                pageResolver.Resolve(
+                    request.Url.AbsolutePath);
 
-            if (page is null)
+            if (page is not null)
             {
-                await response.WriteHeaderAsync(
-                    GeminiStatusCode.NotFound,
-                    "Not found",
+                await page.WriteAsync(
+                    request,
+                    response,
                     requestTimeout.Token);
 
                 await sslStream.ShutdownAsync();
                 return;
             }
 
-            await page.WriteAsync(
-                request,
-                response,
+            if (contentStore.TryResolve(
+                    request.Url.AbsolutePath,
+                    out string? filePath) &&
+                filePath is not null &&
+                string.Equals(
+                    Path.GetExtension(filePath),
+                    ".gmi",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                await response.WriteHeaderAsync(
+                    GeminiStatusCode.Success,
+                    "text/gemini; charset=utf-8",
+                    requestTimeout.Token);
+
+                string content =
+                    await File.ReadAllTextAsync(
+                        filePath,
+                        requestTimeout.Token);
+
+                await response.WriteTextAsync(
+                    content,
+                    requestTimeout.Token);
+
+                await sslStream.ShutdownAsync();
+                return;
+            }
+
+            await response.WriteHeaderAsync(
+                GeminiStatusCode.NotFound,
+                "Not found",
                 requestTimeout.Token);
 
             await sslStream.ShutdownAsync();

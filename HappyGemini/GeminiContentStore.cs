@@ -80,9 +80,7 @@ public sealed class GeminiContentStore
         {
             relativePath = _indexFile;
         }
-        else if (decodedPath.EndsWith(
-                     '/',
-                     StringComparison.Ordinal))
+        else if (decodedPath.EndsWith('/'))
         {
             relativePath =
                 Path.Combine(
