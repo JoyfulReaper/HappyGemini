@@ -4,6 +4,12 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+	  <PackageId>HappyGemini.Extensibility</PackageId>
+	  <Version>0.0.1</Version>
+	  <Authors>Kyle Givler</Authors>
+	  <Description>Extensibility contracts for HappyGemini plugins.</Description>
+	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
 </Project>
