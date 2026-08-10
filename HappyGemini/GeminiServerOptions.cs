@@ -13,7 +13,7 @@ public sealed class GeminiServerOptions : ITcpServerOptions
     public ConnectionLimitBehavior ConnectionLimitBehavior { get; set; } =
         ConnectionLimitBehavior.Wait;
 
-    public string[] Hostnames { get; set; } = ["localhost"];
+    public string[] Hostnames { get; set; } = [];
 
     public string CertificatePath { get; set; } = "happygemini.pfx";
     public string? CertificatePassword { get; set; }
