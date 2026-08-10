@@ -1,0 +1,92 @@
+﻿using Microsoft.Extensions.Options;
+
+namespace HappyGemini;
+
+/// <summary>
+/// Resolves request hostnames to configured Gemini virtual hosts.
+/// </summary>
+public sealed class GeminiVirtualHostResolver
+{
+    private readonly Dictionary<string, GeminiVirtualHost> _hosts;
+
+    public GeminiVirtualHostResolver(
+        IOptions<GeminiServerOptions> serverOptions,
+        IOptions<GeminiContentOptions> contentOptions
+    )
+    {
+        ArgumentNullException.ThrowIfNull(serverOptions);
+
+        ArgumentNullException.ThrowIfNull(contentOptions);
+
+        GeminiServerOptions server = serverOptions.Value;
+
+        GeminiContentOptions content = contentOptions.Value;
+
+        Dictionary<string, GeminiHostContentOptions> hostContent = content.Hosts.ToDictionary(
+            entry => GeminiHostname.Normalize(entry.Key),
+            entry => entry.Value,
+            StringComparer.OrdinalIgnoreCase
+        );
+
+        _hosts = new Dictionary<string, GeminiVirtualHost>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (string hostname in server.Hostnames)
+        {
+            string normalizedHostname = GeminiHostname.Normalize(hostname);
+
+            hostContent.TryGetValue(normalizedHostname, out GeminiHostContentOptions? hostOptions);
+
+            string contentDirectory = string.IsNullOrWhiteSpace(hostOptions?.ContentDirectory)
+                ? content.ContentDirectory
+                : hostOptions.ContentDirectory;
+
+            string indexFile = string.IsNullOrWhiteSpace(hostOptions?.IndexFile)
+                ? content.IndexFile
+                : hostOptions.IndexFile;
+
+            bool useGlobalPages = hostOptions?.UseGlobalPages ?? true;
+
+            string contentRoot = ResolveContentRoot(contentDirectory);
+
+            GeminiVirtualHost host = new(
+                normalizedHostname,
+                contentRoot,
+                indexFile,
+                useGlobalPages
+            );
+
+            if (!_hosts.TryAdd(normalizedHostname, host))
+            {
+                throw new InvalidOperationException(
+                    $"Gemini virtual host '{hostname}' is configured more than once."
+                );
+            }
+        }
+    }
+
+    public GeminiVirtualHost? Resolve(Uri url)
+    {
+        ArgumentNullException.ThrowIfNull(url);
+
+        if (!GeminiHostname.TryNormalize(url.IdnHost, out string normalizedHostname))
+        {
+            return null;
+        }
+
+        _hosts.TryGetValue(normalizedHostname, out GeminiVirtualHost? host);
+
+        return host;
+    }
+
+    private static string ResolveContentRoot(string contentDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentDirectory);
+
+        if (Path.IsPathRooted(contentDirectory))
+        {
+            return Path.GetFullPath(contentDirectory);
+        }
+
+        return Path.GetFullPath(contentDirectory, AppContext.BaseDirectory);
+    }
+}

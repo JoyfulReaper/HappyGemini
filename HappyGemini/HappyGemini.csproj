@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Worker">
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -8,8 +8,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="JoyfulReaperLib.MissionControl" Version="0.0.3" />
     <PackageReference Include="JoyfulReaperLib.TcpServer" Version="0.0.5" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HappyGemini.Extensibility\HappyGemini.Extensibility.csproj" />
+    <ProjectReference Include="..\HappyGemini.TestPlugin\HappyGemini.TestPlugin.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>
