@@ -18,6 +18,7 @@ builder.Services.AddWindowsService(options =>
 builder.Services.AddMissionControlClient(
     builder.Configuration.GetSection(MissionControlClientOptions.SectionName)
 );
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 
 // Gemini Configuration
 builder
@@ -123,7 +124,7 @@ builder.Services.AddSingleton<TelemetryService>();
 
 builder.Services.AddScoped<GeminiPageResolver>();
 
-builder.Services.AddGeminiPagesFromAssemblyContaining<HomePage>();
+builder.Services.AddGeminiPagesFromAssemblyContaining<ServerTimePage>();
 
 builder.Services.AddGeminiPlugins(builder.Configuration);
 

@@ -208,7 +208,7 @@ An `IGeminiPage` is global and is available on every virtual host whose `UseGlob
 
 The application registers pages as scoped services. Automatic registration includes public, concrete, non-generic `IGeminiPage` implementations marked with `[AutoRegisterGeminiPage]` in the built-in page assembly and in each loaded plugin entry assembly. Duplicate global routes, duplicate routes for the same host, and invalid host-scoped declarations cause startup validation to fail.
 
-The built-in `HomePage` is a global page at `/`, so it takes precedence over a static root index on hosts that enable global pages.
+The built-in `ServerTimePage` is a global page at `/server-time`. Static `index.gmi` content owns the root route.
 
 ## External plugins
 
