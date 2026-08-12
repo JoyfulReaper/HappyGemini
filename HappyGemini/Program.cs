@@ -8,6 +8,8 @@ using JoyfulReaperLib.TcpServer;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+// TODO Clean this file up
+
 // Windows Service Support
 builder.Services.AddWindowsService(options =>
 {
@@ -19,6 +21,7 @@ builder.Services.AddMissionControlClient(
     builder.Configuration.GetSection(MissionControlClientOptions.SectionName)
 );
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddHttpClient();
 
 // Gemini Configuration
 builder
