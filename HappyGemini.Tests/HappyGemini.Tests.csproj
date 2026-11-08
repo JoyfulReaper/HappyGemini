@@ -12,6 +12,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+	  <ProjectReference Include="..\HappyGemini.TestPlugin\HappyGemini.TestPlugin.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -22,5 +23,16 @@
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
+
+	<Target Name="CopyTestPlugin" AfterTargets="Build">
+		<ItemGroup>
+			<TestPluginFiles Include="..\HappyGemini.TestPlugin\bin\$(Configuration)\$(TargetFramework)\**\*" />
+		</ItemGroup>
+
+		<Copy
+		  SourceFiles="@(TestPluginFiles)"
+		  DestinationFiles="@(TestPluginFiles->'$(OutDir)plugins\HappyGemini.TestPlugin\%(RecursiveDir)%(Filename)%(Extension)')"
+		  SkipUnchangedFiles="true" />
+	</Target>
 
 </Project>

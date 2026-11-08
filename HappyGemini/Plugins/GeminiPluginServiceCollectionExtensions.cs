@@ -1,4 +1,6 @@
-﻿using HappyGemini.Pages;
+﻿using HappyGemini.Extensibility;
+using HappyGemini.Pages;
+using System.Reflection;
 
 namespace HappyGemini.Plugins;
 
@@ -37,6 +39,8 @@ public static class GeminiPluginServiceCollectionExtensions
         {
             GeminiLoadedPlugin loaded = loader.Load(descriptor);
 
+            ConfigurePluginServices(loaded, services, configuration);
+
             services.AddGeminiPagesFromAssemblies(loaded.EntryAssembly);
 
             // Retain metadata about loaded plugins for diagnostics
@@ -45,5 +49,32 @@ public static class GeminiPluginServiceCollectionExtensions
         }
 
         return services;
+    }
+
+    private static void ConfigurePluginServices(
+        GeminiLoadedPlugin loaded,
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        IEnumerable<TypeInfo> pluginTypes = loaded.EntryAssembly.DefinedTypes
+            .Where(type =>
+                type.IsPublic &&
+                type.IsClass &&
+                !type.IsAbstract &&
+                !type.ContainsGenericParameters &&
+                typeof(IHappyGeminiPlugin).IsAssignableFrom(type))
+            .OrderBy(type => type.FullName ?? type.Name, StringComparer.Ordinal);
+
+        foreach (TypeInfo pluginType in pluginTypes)
+        {
+            if (Activator.CreateInstance(pluginType.AsType()) is not IHappyGeminiPlugin plugin)
+            {
+                throw new InvalidOperationException(
+                    $"Could not create plugin entry point '{pluginType.FullName}' " +
+                    $"for '{loaded.Descriptor.Id}'.");
+            }
+
+            plugin.ConfigureServices(services, configuration);
+        }
     }
 }

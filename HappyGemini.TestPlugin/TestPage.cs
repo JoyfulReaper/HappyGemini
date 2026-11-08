@@ -5,6 +5,11 @@ namespace HappyGemini.TestPlugin;
 [AutoRegisterGeminiPage]
 public sealed class TestPage : IGeminiPage
 {
+    public TestPage(TestPluginDependency dependency)
+    {
+        ArgumentNullException.ThrowIfNull(dependency);
+    }
+
     public string Path => "/plugin-test";
 
     public async Task WriteAsync(
