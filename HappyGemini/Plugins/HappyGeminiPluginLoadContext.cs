@@ -1,6 +1,6 @@
-﻿using System.Reflection;
+﻿using HappyGemini.Extensibility;
+using System.Reflection;
 using System.Runtime.Loader;
-using HappyGemini.Extensibility;
 
 namespace HappyGemini.Plugins;
 
@@ -38,6 +38,26 @@ internal sealed class HappyGeminiPluginLoadContext : AssemblyLoadContext
         )
         {
             return ExtensibilityAssembly;
+        }
+
+        // Microsoft.Extensions abstractions cross the host/plugin boundary.
+        // Reuse the host's loaded assemblies to preserve type identity.
+        if (assemblyName.Name?.StartsWith(
+                "Microsoft.Extensions.",
+                StringComparison.Ordinal) == true)
+        {
+            Assembly? sharedAssembly =
+                AssemblyLoadContext.Default.Assemblies
+                    .FirstOrDefault(assembly =>
+                        string.Equals(
+                            assembly.GetName().Name,
+                            assemblyName.Name,
+                            StringComparison.OrdinalIgnoreCase));
+
+            if (sharedAssembly is not null)
+            {
+                return sharedAssembly;
+            }
         }
 
         string? assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
