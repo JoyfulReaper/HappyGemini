@@ -3,4 +3,6 @@
   <Project Path="HappyGemini.TestPlugin/HappyGemini.TestPlugin.csproj" Id="30853e3b-8001-40eb-8382-b0c55e09cbd8" />
   <Project Path="HappyGemini.Tests/HappyGemini.Tests.csproj" Id="356caed4-fa31-456d-bfdd-7e8177e2e212" />
   <Project Path="HappyGemini/HappyGemini.csproj" />
+  <Project Path="HappyGeminiPages.RandomSteam.Tests/HappyGeminiPages.RandomSteam.Tests.csproj" />
+  <Project Path="HappyGeminiPages.RandomSteam/HappyGeminiPages.RandomSteam.csproj" />
 </Solution>
